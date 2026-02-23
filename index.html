@@ -1,0 +1,1765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bentley Geo Search — Satellite Imagery</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --accent: #ffffff;
+      --accent-dark: #e0e0e0;
+      --bg-dark: #0a0a0a;
+      --bg-panel: #111111;
+      --bg-card: #1a1a1a;
+      --bg-hover: #222222;
+      --border: #2e2e2e;
+      --text: #f0f0f0;
+      --text-muted: #888888;
+      --danger: #ff4444;
+      --warning: #ffaa00;
+      --accent-color: #ffffff;
+      --btn-bg: #ffffff;
+      --btn-text: #0a0a0a;
+      --btn-hover: #e0e0e0;
+    }
+
+    html, body { height: 100%; font-family: 'Inter', system-ui, sans-serif; background: var(--bg-dark); color: var(--text); }
+
+    /* ── HEADER ── */
+    header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      height: 52px; background: #000000;
+      border-bottom: 1px solid #2e2e2e;
+      display: flex; align-items: center; padding: 0 20px; gap: 16px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; letter-spacing: .3px; }
+    .logo-icon { width: 30px; height: 30px; background: #ffffff; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+    .logo-text { color: var(--text); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; font-size: 14px; }
+    .logo-text span { color: #ffffff; font-weight: 800; }
+
+    .search-bar { flex: 1; max-width: 380px; position: relative; }
+    .search-bar input {
+      width: 100%; padding: 7px 36px 7px 12px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-size: 13px; outline: none;
+      transition: border-color .2s;
+    }
+    .search-bar input:focus { border-color: #ffffff; }
+    .search-bar input::placeholder { color: var(--text-muted); }
+    .search-bar .search-icon {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      color: var(--text-muted); font-size: 14px; cursor: pointer;
+    }
+    .search-suggestions {
+      position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 6px; overflow: hidden; display: none; z-index: 2000;
+    }
+    .search-suggestions.open { display: block; }
+    .suggestion-item {
+      padding: 8px 12px; font-size: 13px; cursor: pointer;
+      border-bottom: 1px solid var(--border);
+    }
+    .suggestion-item:last-child { border-bottom: none; }
+    .suggestion-item:hover { background: var(--bg-hover); color: #ffffff; }
+
+    .header-tabs { display: flex; gap: 2px; margin-left: 8px; }
+    .tab-btn {
+      padding: 6px 14px; border-radius: 5px; font-size: 12px; font-weight: 600;
+      cursor: pointer; border: 1px solid transparent; transition: all .2s;
+      background: none; color: var(--text-muted);
+    }
+    .tab-btn.active { background: #ffffff; color: #0a0a0a; border-color: #ffffff; }
+    .tab-btn:not(.active):hover { border-color: var(--border); color: var(--text); }
+
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .enquire-header-btn {
+      padding: 7px 18px; background: #ffffff;
+      color: #0a0a0a; border: none; border-radius: 4px; font-size: 12px;
+      font-weight: 700; cursor: pointer; transition: background .2s; letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+    .enquire-header-btn:hover { background: var(--accent-dark); }
+
+    /* ── LAYOUT ── */
+    .app { display: flex; height: 100vh; padding-top: 52px; }
+
+    /* ── LEFT PANEL ── */
+    .left-panel {
+      width: 340px; flex-shrink: 0; background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    .filters-section { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .filters-title { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+
+    .filter-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .filter-group { flex: 1; }
+    .filter-group label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+    .filter-group select, .filter-group input[type=date], .filter-group input[type=range] {
+      width: 100%; padding: 6px 8px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 5px; color: var(--text); font-size: 12px; outline: none;
+    }
+    .filter-group select:focus, .filter-group input[type=date]:focus { border-color: #ffffff; }
+    .range-val { font-size: 11px; color: #ffffff; float: right; }
+
+    /* ── DATA TYPE SELECTOR ── */
+    .datatype-section {
+      padding: 12px 14px 10px; border-bottom: 1px solid var(--border);
+    }
+    .datatype-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px;
+    }
+    .datatype-card {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 5px; padding: 10px 4px 8px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 6px; cursor: pointer; transition: all .15s;
+      color: var(--text-muted); font-size: 9px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .5px; text-align: center;
+      line-height: 1.2;
+    }
+    .datatype-card:hover {
+      border-color: #555; color: var(--text); background: var(--bg-hover);
+    }
+    .datatype-card.active {
+      border-color: #ffffff; color: #ffffff; background: rgba(255,255,255,.08);
+    }
+    .datatype-icon { font-size: 20px; line-height: 1; }
+    .datatype-label { font-size: 9px; }
+
+    .draw-btns { display: flex; gap: 6px; margin-top: 8px; }
+    .draw-btn {
+      flex: 1; padding: 7px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 5px; color: var(--text-muted); font-size: 11px; font-weight: 600;
+      cursor: pointer; transition: all .2s; text-align: center;
+    }
+    .draw-btn:hover, .draw-btn.active { border-color: #ffffff; color: #ffffff; background: rgba(255,255,255,.08); }
+
+    .search-btn {
+      width: 100%; margin-top: 10px; padding: 9px;
+      background: #ffffff; color: #0a0a0a; border: none;
+      border-radius: 4px; font-size: 12px; font-weight: 700; cursor: pointer;
+      transition: background .2s; text-transform: uppercase; letter-spacing: .5px;
+    }
+    .search-btn:hover { background: #e0e0e0; }
+
+    /* results */
+    .results-header {
+      padding: 10px 14px; display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border); font-size: 12px;
+    }
+    .results-count { color: var(--text-muted); }
+    .results-count strong { color: #ffffff; }
+    .sort-select {
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text); font-size: 11px; padding: 3px 6px; border-radius: 4px; outline: none;
+    }
+
+    .results-list { flex: 1; overflow-y: auto; padding: 8px; }
+    .results-list::-webkit-scrollbar { width: 5px; }
+    .results-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    .result-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 8px; margin-bottom: 8px; overflow: hidden;
+      cursor: pointer; transition: border-color .2s, transform .15s;
+      display: flex; flex-direction: row; height: 100px;
+    }
+    .result-card:hover { border-color: #ffffff; transform: translateY(-1px); }
+    .result-card.selected { border-color: #ffffff; background: rgba(255,255,255,.05); }
+
+    /* thumbnail — left side */
+    .card-thumb {
+      width: 100px; flex-shrink: 0; position: relative; overflow: hidden;
+      background: #0a0a0a;
+    }
+    .card-thumb img {
+      width: 100%; height: 100%; object-fit: cover;
+      display: block; opacity: .85;
+    }
+    .card-type {
+      position: absolute; bottom: 5px; left: 5px;
+      border-radius: 3px; padding: 1px 5px; font-size: 9px; font-weight: 700;
+    }
+    .type-optical { background: rgba(255,255,255,.90); color: #0a0a0a; }
+    .type-sar     { background: rgba(160,160,160,.90); color: #0a0a0a; }
+
+    /* body — right side */
+    .card-body {
+      flex: 1; padding: 10px 12px; display: flex; flex-direction: column;
+      justify-content: flex-start; gap: 2px; min-width: 0;
+    }
+    .card-date { font-size: 15px; font-weight: 700; color: #ffffff; margin-bottom: 2px; }
+    .card-title { font-size: 13px; font-weight: 600; color: #ffffff; margin-bottom: 4px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-specs { display: flex; flex-direction: column; gap: 1px; }
+    .card-spec-row { display: flex; gap: 5px; font-size: 12px; color: var(--text-muted); align-items: baseline; }
+    .card-spec-row .spec-key { color: var(--text-muted); white-space: nowrap; }
+    .card-spec-row .spec-val { color: var(--text-muted); font-weight: 400; white-space: nowrap; }
+    .enquire-card-btn {
+      padding: 3px 8px; background: none; border: 1px solid #444444;
+      color: #888888; border-radius: 3px; font-size: 9px; font-weight: 600;
+      cursor: pointer; transition: all .2s; text-transform: uppercase; letter-spacing: .4px;
+    }
+    .enquire-card-btn:hover { background: #ffffff; color: #0a0a0a; border-color: #ffffff; }
+
+    /* ── MAP ── */
+    #map { width: 100%; height: 100%; z-index: 1; }
+
+    /* ── RIGHT PANEL (detail) ── */
+    .detail-panel {
+      position: fixed; top: 52px; right: 0; bottom: 0;
+      width: 320px; background: var(--bg-panel);
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+      transform: translateX(100%); transition: transform .3s ease;
+      z-index: 600;
+    }
+    .detail-panel.open { transform: translateX(0); }
+
+    .detail-header {
+      padding: 14px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .detail-header h3 { font-size: 14px; font-weight: 700; }
+    .close-btn { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; }
+    .close-btn:hover { color: var(--text); }
+
+    .detail-thumb { height: 160px; position: relative; overflow: hidden; }
+    .detail-thumb canvas { width: 100%; height: 100%; }
+
+    .detail-body { padding: 14px; flex: 1; overflow-y: auto; }
+    .detail-body::-webkit-scrollbar { width: 4px; }
+    .detail-body::-webkit-scrollbar-thumb { background: var(--border); }
+
+    .detail-row { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row .key { color: var(--text-muted); }
+    .detail-row .val { font-weight: 600; text-align: right; }
+
+    .preview-bar {
+      padding: 12px 14px; border-top: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .preview-bar .price-big { font-size: 22px; font-weight: 800; color: #ffffff; }
+    .preview-bar .price-note { font-size: 11px; color: var(--text-muted); }
+    .enquire-detail-btn {
+      width: 100%; padding: 10px; background: #ffffff; border: none;
+      border-radius: 4px; color: #0a0a0a; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: background .2s; letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+    .enquire-detail-btn:hover { background: #e0e0e0; }
+
+    /* ── MAP TOOLBAR (right side, on map) ── */
+    .leaflet-control-attribution { display: none; }
+
+    .map-toolbar {
+      position: absolute; top: 10px; right: 10px; z-index: 500;
+      display: flex; flex-direction: column; gap: 6px; align-items: flex-end;
+    }
+
+    /* Draw tools group */
+    .toolbar-group {
+      background: var(--bg-panel); border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,.4);
+      display: flex; flex-direction: column;
+    }
+    .toolbar-btn {
+      width: 36px; height: 36px; background: none; border: none;
+      border-bottom: 1px solid var(--border); color: var(--text-muted);
+      font-size: 16px; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; transition: all .15s;
+    }
+    .toolbar-btn:last-child { border-bottom: none; }
+    .toolbar-btn:hover { background: var(--bg-hover); color: #ffffff; }
+    .toolbar-btn.active { background: rgba(255,255,255,.15); color: #ffffff; }
+    .toolbar-btn[title]:hover::after {
+      content: attr(title);
+      position: absolute; right: 44px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 5px; padding: 4px 8px; font-size: 11px;
+      color: var(--text); white-space: nowrap; pointer-events: none;
+    }
+
+    /* Layer switcher dropdown */
+    .layer-switcher {
+      background: var(--bg-panel); border: 1px solid var(--border);
+      border-radius: 8px; overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,.4);
+      display: flex; flex-direction: column;
+    }
+    .layer-switcher-title {
+      font-size: 9px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 1px;
+      padding: 6px 10px 4px; border-bottom: 1px solid var(--border);
+    }
+    .layer-btn {
+      padding: 6px 12px; border: none; background: none; color: var(--text-muted);
+      font-size: 11px; font-weight: 600; cursor: pointer;
+      text-align: left; transition: all .15s; white-space: nowrap;
+      border-bottom: 1px solid var(--border);
+    }
+    .layer-btn:last-child { border-bottom: none; }
+    .layer-btn.active { background: rgba(255,255,255,.10); color: #ffffff; }
+    .layer-btn:not(.active):hover { background: var(--bg-hover); color: var(--text); }
+
+    /* Location quick-jump */
+    .map-tools {
+      position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+      z-index: 500; display: flex; gap: 6px;
+    }
+    .map-tool-btn {
+      padding: 6px 14px; background: var(--bg-panel); border: 1px solid var(--border);
+      border-radius: 20px; color: var(--text); font-size: 11px; font-weight: 600;
+      cursor: pointer; transition: all .2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    }
+    .map-tool-btn:hover { border-color: #ffffff; color: #ffffff; background: rgba(255,255,255,.08); }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(60px);
+      background: #ffffff; border: 1px solid #333333; border-radius: 4px;
+      padding: 10px 20px; font-size: 12px; color: #0a0a0a; font-weight: 600;
+      z-index: 9999; transition: transform .3s ease; pointer-events: none;
+      text-transform: uppercase; letter-spacing: .3px;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── ENQUIRE MODAL ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.6);
+      z-index: 5000; display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity .25s ease;
+    }
+    .modal-backdrop.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--bg-panel); border: 1px solid var(--border);
+      border-radius: 12px; width: 460px; max-width: 95vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+      transform: translateY(20px); transition: transform .25s ease;
+    }
+    .modal-backdrop.open .modal { transform: translateY(0); }
+    .modal-header {
+      padding: 18px 20px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-header h2 { font-size: 16px; font-weight: 700; }
+    .modal-header .modal-subtitle { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+    .modal-context {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 7px; padding: 10px 12px; font-size: 12px;
+    }
+    .modal-context-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+    .modal-context-info { display: flex; flex-wrap: wrap; gap: 6px; }
+    .modal-tag {
+      background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.2);
+      border-radius: 3px; padding: 2px 8px; font-size: 11px; color: #dddddd;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group label { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+    .form-group input, .form-group textarea, .form-group select {
+      padding: 8px 10px; background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-size: 13px; outline: none;
+      transition: border-color .2s; font-family: inherit;
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: #ffffff; }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: var(--text-muted); }
+    .form-group textarea { resize: vertical; min-height: 72px; }
+    .form-row { display: flex; gap: 10px; }
+    .form-row .form-group { flex: 1; }
+    .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-cancel {
+      padding: 9px 18px; background: none; border: 1px solid var(--border);
+      border-radius: 7px; color: var(--text-muted); font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all .2s;
+    }
+    .btn-cancel:hover { border-color: var(--text-muted); color: var(--text); }
+    .btn-submit {
+      padding: 9px 24px; background: #ffffff; border: none;
+      border-radius: 4px; color: #0a0a0a; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: background .2s; text-transform: uppercase; letter-spacing: .5px;
+    }
+    .btn-submit:hover { background: #e0e0e0; }
+
+    /* spinner */
+    .spinner {
+      width: 36px; height: 36px; border: 3px solid var(--border);
+      border-top-color: #ffffff; border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* empty state */
+    .empty-state {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 12px; color: var(--text-muted);
+      padding: 20px; text-align: center;
+    }
+    .empty-icon { font-size: 40px; }
+    .empty-state h4 { font-size: 14px; color: var(--text); }
+    .empty-state p { font-size: 12px; line-height: 1.5; }
+
+    input[type=range] { accent-color: #ffffff; }
+    input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.5); }
+
+    /* ── Footprint hover tooltip ── */
+    .footprint-tooltip {
+      background: #111111 !important;
+      border: 1px solid #3a3a3a !important;
+      border-radius: 7px !important;
+      box-shadow: 0 6px 20px rgba(0,0,0,.7) !important;
+      color: #f0f0f0 !important;
+      padding: 8px 12px !important;
+    }
+    .footprint-tooltip::before { display: none !important; }
+    .leaflet-tooltip-top.footprint-tooltip::before,
+    .leaflet-tooltip-bottom.footprint-tooltip::before,
+    .leaflet-tooltip-left.footprint-tooltip::before,
+    .leaflet-tooltip-right.footprint-tooltip::before { display: none !important; }
+
+    /* ── AOI Metrics Tooltip ── */
+    .aoi-tooltip {
+      position: absolute; z-index: 800; pointer-events: none;
+      background: #111111; border: 1px solid #2e2e2e;
+      border-radius: 8px; padding: 10px 13px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.7);
+      font-family: 'Inter', sans-serif; font-size: 11px;
+      min-width: 195px;
+      top: 10px; left: 10px;
+    }
+    .aoi-tooltip-title {
+      font-size: 9px; font-weight: 700; color: #555555;
+      text-transform: uppercase; letter-spacing: 1.2px;
+      margin-bottom: 7px;
+    }
+    .aoi-tooltip-divider {
+      border-top: 1px solid #2a2a2a; margin: 4px 0;
+    }
+    .aoi-tooltip-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 2px 0; gap: 16px;
+    }
+    .aoi-tooltip-key { color: #666666; font-weight: 500; white-space: nowrap; }
+    .aoi-tooltip-val { color: #ffffff; font-weight: 600; text-align: right; white-space: nowrap; }
+
+    /* ── Edge length labels on map ── */
+    .edge-label {
+      background: none; border: none; pointer-events: none;
+    }
+    .edge-label span {
+      display: inline-block;
+      background: rgba(0,0,0,0.72);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 3px;
+      color: #ffffff;
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 5px;
+      white-space: nowrap;
+      transform: translate(-50%, -50%);
+    }
+
+    /* ── Leaflet Draw edit handles ── */
+    .leaflet-editing-icon {
+      width: 10px !important; height: 10px !important;
+      margin-left: -5px !important; margin-top: -5px !important;
+      border-radius: 0 !important;
+      background: #ffffff !important;
+      border: 2px solid #0a0a0a !important;
+      box-shadow: 0 1px 4px rgba(0,0,0,.5) !important;
+    }
+    .leaflet-touch .leaflet-editing-icon {
+      width: 14px !important; height: 14px !important;
+      margin-left: -7px !important; margin-top: -7px !important;
+    }
+
+    @media (max-width: 900px) {
+      .left-panel { width: 280px; }
+      .detail-panel { width: 260px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon" style="background:#fff;border-radius:3px;font-family:'Inter',sans-serif;font-weight:800;font-size:16px;color:#000;width:30px;height:30px;display:flex;align-items:center;justify-content:center;letter-spacing:-1px;">B</div>
+    <div class="logo-text" style="display:flex;flex-direction:column;line-height:1.1;">
+      <span style="font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#fff;">BENTLEY</span>
+      <span style="font-size:9px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;color:#888;">Geo Search</span>
+    </div>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" id="searchInput" placeholder="Search location…" autocomplete="off" />
+    <span class="search-icon">⌕</span>
+    <div class="search-suggestions" id="searchSuggestions"></div>
+  </div>
+
+  <div class="header-right">
+  </div>
+</header>
+
+<!-- MAIN -->
+<div class="app">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <!-- DATA TYPE SELECTOR -->
+    <div class="datatype-section">
+      <div class="filters-title">Data Type</div>
+      <div class="datatype-grid">
+        <button class="datatype-card active" data-type="all" onclick="selectDataType('all', this)">
+          <span class="datatype-icon">🌐</span>
+          <span class="datatype-label">All</span>
+        </button>
+        <button class="datatype-card" data-type="optical_satellite" onclick="selectDataType('optical_satellite', this)">
+          <span class="datatype-icon">🛰</span>
+          <span class="datatype-label">Optical Satellite</span>
+        </button>
+        <button class="datatype-card" data-type="optical_aerial" onclick="selectDataType('optical_aerial', this)">
+          <span class="datatype-icon">✈️</span>
+          <span class="datatype-label">Optical Aerial</span>
+        </button>
+        <button class="datatype-card" data-type="elevation" onclick="selectDataType('elevation', this)">
+          <span class="datatype-icon">⛰</span>
+          <span class="datatype-label">Elevation Satellite</span>
+        </button>
+        <button class="datatype-card" data-type="sar" onclick="selectDataType('sar', this)">
+          <span class="datatype-icon">📡</span>
+          <span class="datatype-label">SAR Satellite</span>
+        </button>
+        <button class="datatype-card" data-type="basemap" onclick="selectDataType('basemap', this)">
+          <span class="datatype-icon">🗺</span>
+          <span class="datatype-label">Basemaps Satellite</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="filters-section">
+      <div class="filters-title">Search Filters</div>
+
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Date From</label>
+          <input type="date" id="dateFrom" value="2025-01-01" />
+        </div>
+        <div class="filter-group">
+          <label>Date To</label>
+          <input type="date" id="dateTo" value="2026-12-31" />
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>Sensor Type</label>
+          <select id="sensorType">
+            <option value="all">All Types</option>
+            <option value="optical">Optical</option>
+            <option value="sar">SAR</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Resolution</label>
+          <select id="resolution">
+            <option value="all">Any</option>
+            <option value="high">High (&lt;1 m)</option>
+            <option value="medium">Medium (1–3 m)</option>
+            <option value="low">Low (&gt;3 m)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="filter-group" style="margin-bottom:8px">
+        <label>Max Cloud Cover: <span class="range-val" id="cloudVal">30%</span></label>
+        <input type="range" id="cloudCover" min="0" max="100" value="30"
+               oninput="document.getElementById('cloudVal').textContent=this.value+'%'" />
+      </div>
+
+      <div class="filter-group" style="margin-bottom:8px">
+        <label>Provider</label>
+        <select id="provider">
+          <option value="all">All Providers</option>
+          <option value="vantor">Vantor</option>
+          <option value="maxar">Maxar</option>
+          <option value="planet">Planet Labs</option>
+          <option value="airbus">Airbus</option>
+          <option value="iceye">ICEYE</option>
+          <option value="satellogic">Satellogic</option>
+        </select>
+      </div>
+
+      <button class="search-btn" onclick="runSearch()">🔍 Search Imagery</button>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="results-header">
+      <div class="results-count">Found: <strong id="resultCount">0</strong></div>
+      <select class="sort-select" id="sortSelect" onchange="sortResults()">
+        <option value="date">Date ↓</option>
+        <option value="price">Price ↑</option>
+        <option value="cloud">Cloud Cover</option>
+        <option value="res">Resolution</option>
+      </select>
+    </div>
+
+    <div id="resultsList" class="results-list">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">🛰</div>
+        <h4>Start your search</h4>
+        <p>Draw an area of interest on the map or set filter parameters, then click "Search Imagery".</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div style="position:relative;flex:1;display:flex;flex-direction:column;">
+    <div id="map" style="flex:1;min-height:0;"></div>
+
+    <!-- RIGHT TOOLBAR on map -->
+    <div class="map-toolbar">
+
+      <!-- Zoom tools -->
+      <div class="toolbar-group">
+        <button class="toolbar-btn" onclick="map.zoomIn()" title="Zoom In">+</button>
+        <button class="toolbar-btn" onclick="map.zoomOut()" title="Zoom Out">−</button>
+      </div>
+
+      <!-- Draw tools -->
+      <div class="toolbar-group">
+        <button class="toolbar-btn" id="btnRect" onclick="activateDraw('rect')" title="Draw Rectangle">▭</button>
+        <button class="toolbar-btn" id="btnPoly" onclick="activateDraw('poly')" title="Draw Polygon">⬡</button>
+        <button class="toolbar-btn" id="btnClear" onclick="clearAOI()" title="Clear AOI">✕</button>
+      </div>
+
+      <!-- Labels toggle -->
+      <div class="toolbar-group">
+        <button class="toolbar-btn" id="btnLabels" onclick="toggleLabels()" title="Toggle City Labels">𝐀</button>
+      </div>
+
+      <!-- Layer switcher as single icon button with tooltip -->
+      <div class="toolbar-group" style="position:relative;">
+        <button class="toolbar-btn" id="layerToggleBtn" onclick="toggleLayerMenu()" title="Switch Base Layer">⊞</button>
+      </div>
+      <div class="layer-switcher" id="layerSwitcher" style="display:none;">
+        <div class="layer-switcher-title">Base Layer</div>
+        <button class="layer-btn active" id="lyrEsri" onclick="switchLayer('esri')">🌍 ESRI Satellite</button>
+        <button class="layer-btn" id="lyrSat" onclick="switchLayer('satellite')">🛰 Google Satellite</button>
+        <button class="layer-btn" id="lyrHybrid" onclick="switchLayer('hybrid')">🗺 Google Hybrid</button>
+        <button class="layer-btn" id="lyrDark" onclick="switchLayer('dark')">🌑 Dark</button>
+        <button class="layer-btn" id="lyrOSM" onclick="switchLayer('osm')">🗾 OpenStreetMap</button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- RIGHT DETAIL PANEL -->
+  <div class="detail-panel" id="detailPanel">
+    <div class="detail-header">
+      <div>
+        <h3 id="detailTitle">Image Details</h3>
+      </div>
+      <button class="close-btn" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="detail-thumb">
+      <img id="detailImg" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" />
+    </div>
+    <div class="detail-body" id="detailBody"></div>
+    <div class="preview-bar">
+      <button class="enquire-detail-btn" onclick="openEnquire(currentDetail)">Enquire Now</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ENQUIRE MODAL -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="handleBackdropClick(event)">
+  <div class="modal" id="enquireModal">
+    <div class="modal-header">
+      <div>
+        <h2>Enquire Now</h2>
+        <div class="modal-subtitle">Our team will get back to you within 1 business day</div>
+      </div>
+      <button class="close-btn" onclick="closeEnquire()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-context" id="modalContext" style="display:none">
+        <div class="modal-context-label">Selected Image</div>
+        <div class="modal-context-info" id="modalContextInfo"></div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>First Name *</label>
+          <input type="text" id="fName" placeholder="John" />
+        </div>
+        <div class="form-group">
+          <label>Last Name *</label>
+          <input type="text" id="lName" placeholder="Smith" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Work Email *</label>
+        <input type="email" id="fEmail" placeholder="john.smith@company.com" />
+      </div>
+      <div class="form-group">
+        <label>Organisation</label>
+        <input type="text" id="fOrg" placeholder="Company name" />
+      </div>
+      <div class="form-group">
+        <label>Use Case</label>
+        <select id="fUseCase">
+          <option value="">Select a use case…</option>
+          <option>Agriculture & Land Use</option>
+          <option>Infrastructure Monitoring</option>
+          <option>Disaster Response</option>
+          <option>Urban Planning</option>
+          <option>Defence & Security</option>
+          <option>Environmental Monitoring</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Message</label>
+        <textarea id="fMessage" placeholder="Tell us more about your requirements…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeEnquire()">Cancel</button>
+      <button class="btn-submit" onclick="submitEnquiry()">Send Enquiry →</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/leaflet.gridlayer.googlemutant@latest/dist/Leaflet.GoogleMutant.js"></script>
+<script>
+// ── GOOGLE MAPS API KEY ───────────────────────────────────
+// Insert your key here: https://console.cloud.google.com → Maps JavaScript API
+const GOOGLE_API_KEY = 'INSERT_YOUR_KEY_HERE';
+
+// ── MAP INIT ──────────────────────────────────────────────
+const map = L.map('map', { zoomControl: false }).setView([48, 25], 4);
+
+const tileLayers = {
+  esri: L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { maxZoom: 19, attribution: 'Tiles © Esri' }
+  ),
+  dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    subdomains: 'abcd', maxZoom: 19
+  }),
+  osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }),
+  satellite: null,
+  hybrid: null,
+};
+
+let activeLayerKey = 'esri';
+tileLayers.esri.addTo(map);
+
+// ESRI labels overlay (city names, roads — transparent layer on top)
+const esriLabels = L.tileLayer(
+  'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+  { maxZoom: 19, opacity: 1, pane: 'overlayPane' }
+);
+let labelsVisible = false;
+
+function toggleLabels() {
+  labelsVisible = !labelsVisible;
+  if (labelsVisible) {
+    esriLabels.addTo(map);
+  } else {
+    map.removeLayer(esriLabels);
+  }
+  document.getElementById('btnLabels').classList.toggle('active', labelsVisible);
+}
+
+function loadGoogleMapsAPI() {
+  if (GOOGLE_API_KEY === 'INSERT_YOUR_KEY_HERE') {
+    document.getElementById('lyrSat').title = 'Google Maps API key required';
+    document.getElementById('lyrHybrid').title = 'Google Maps API key required';
+    document.getElementById('lyrSat').style.opacity = '0.4';
+    document.getElementById('lyrHybrid').style.opacity = '0.4';
+    return;
+  }
+  const script = document.createElement('script');
+  script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_API_KEY}&callback=onGoogleMapsReady`;
+  script.async = true; script.defer = true;
+  document.head.appendChild(script);
+}
+
+window.onGoogleMapsReady = function () {
+  tileLayers.satellite = L.gridLayer.googleMutant({ type: 'satellite', maxZoom: 21 });
+  tileLayers.hybrid    = L.gridLayer.googleMutant({ type: 'hybrid',    maxZoom: 21 });
+};
+
+loadGoogleMapsAPI();
+
+function toggleLayerMenu() {
+  const menu = document.getElementById('layerSwitcher');
+  menu.style.display = menu.style.display === 'none' ? 'flex' : 'none';
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.map-toolbar')) {
+    document.getElementById('layerSwitcher').style.display = 'none';
+  }
+});
+
+function switchLayer(key) {
+  if (key === activeLayerKey) return;
+  if ((key === 'satellite' || key === 'hybrid') && !tileLayers[key]) {
+    showToast('Google Maps API key required — see GOOGLE_API_KEY in the source');
+    return;
+  }
+  if (tileLayers[activeLayerKey]) map.removeLayer(tileLayers[activeLayerKey]);
+  tileLayers[key].addTo(map);
+  activeLayerKey = key;
+  ['lyrEsri','lyrSat','lyrHybrid','lyrDark','lyrOSM'].forEach(id => document.getElementById(id).classList.remove('active'));
+  const btnMap = { esri:'lyrEsri', satellite:'lyrSat', hybrid:'lyrHybrid', dark:'lyrDark', osm:'lyrOSM' };
+  document.getElementById(btnMap[key]).classList.add('active');
+  document.getElementById('layerSwitcher').style.display = 'none';
+}
+
+L.control.zoom({ position: 'topright' }).addTo(map);
+
+// ── DRAW ──────────────────────────────────────────────────
+const drawnItems = new L.FeatureGroup().addTo(map);
+let drawHandler = null;
+let currentAOI = null;
+
+// ── LOCATIONS ────────────────────────────────────────────
+const locations = {
+  moscow: { latlng: [55.75, 37.62], zoom: 10, name: 'Moscow' },
+  dubai:  { latlng: [25.2,  55.27], zoom: 11, name: 'Dubai'  },
+  tokyo:  { latlng: [35.69,139.69], zoom: 10, name: 'Tokyo'  },
+  ny:     { latlng: [40.71,-74.01], zoom: 10, name: 'New York'},
+};
+
+function flyToLocation(key) {
+  const l = locations[key];
+  map.flyTo(l.latlng, l.zoom, { duration: 1.2 });
+  document.getElementById('searchInput').value = l.name;
+  setTimeout(runSearch, 1300);
+}
+
+// ── SEARCH SUGGESTIONS ───────────────────────────────────
+const SUGGESTIONS = ['Moscow, Russia','Saint Petersburg, Russia','Dubai, UAE',
+  'Tokyo, Japan','New York, USA','London, UK','Berlin, Germany',
+  'Beijing, China','Sydney, Australia','Cairo, Egypt'];
+
+const searchInput = document.getElementById('searchInput');
+const suggBox = document.getElementById('searchSuggestions');
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.toLowerCase().trim();
+  if (!q) { suggBox.classList.remove('open'); return; }
+  const hits = SUGGESTIONS.filter(s => s.toLowerCase().includes(q));
+  if (!hits.length) { suggBox.classList.remove('open'); return; }
+  suggBox.innerHTML = hits.map(h => `<div class="suggestion-item" onclick="selectSuggestion('${h}')">${h}</div>`).join('');
+  suggBox.classList.add('open');
+});
+document.addEventListener('click', e => { if (!e.target.closest('.search-bar')) suggBox.classList.remove('open'); });
+
+function selectSuggestion(val) {
+  searchInput.value = val;
+  suggBox.classList.remove('open');
+  const key = Object.keys(locations).find(k => val.toLowerCase().includes(locations[k].name.toLowerCase()));
+  if (key) flyToLocation(key); else runSearch();
+}
+
+// ── DATA TYPE ─────────────────────────────────────────────
+let activeDataType = 'all';
+
+function selectDataType(type, el) {
+  activeDataType = type;
+  document.querySelectorAll('.datatype-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+
+  // Auto-sync the Sensor Type dropdown
+  const sensorSelect = document.getElementById('sensorType');
+  if (type === 'sar') {
+    sensorSelect.value = 'sar';
+  } else if (type === 'optical_satellite' || type === 'optical_aerial' || type === 'basemap') {
+    sensorSelect.value = 'optical';
+  } else {
+    sensorSelect.value = 'all';
+  }
+
+  runSearch();
+}
+
+// ── TABS ──────────────────────────────────────────────────
+function switchTab(t) {
+  document.getElementById('tabArchive').classList.toggle('active', t === 'archive');
+  document.getElementById('tabOrder').classList.toggle('active', t === 'order');
+  showToast(t === 'order'
+    ? 'New Order mode: select area and capture date'
+    : 'Archive mode: search existing imagery');
+}
+
+// ── DRAW ──────────────────────────────────────────────────
+let editDebounce = null;
+
+const SHAPE_OPTS = {
+  color: '#ffffff', weight: 2,
+  fillColor: '#ffffff', fillOpacity: 0.06
+};
+
+function activateDraw(mode) {
+  // cancel any active draw
+  if (drawHandler) { try { drawHandler.disable(); } catch(e){} drawHandler = null; }
+  clearAOI();
+  document.querySelectorAll('.toolbar-btn').forEach(b => b.classList.remove('active'));
+
+  if (mode === 'rect') {
+    document.getElementById('btnRect').classList.add('active');
+    drawHandler = new L.Draw.Rectangle(map, { shapeOptions: SHAPE_OPTS });
+  } else {
+    document.getElementById('btnPoly').classList.add('active');
+    drawHandler = new L.Draw.Polygon(map, {
+      shapeOptions: SHAPE_OPTS,
+      showLength: true,
+      allowIntersection: false
+    });
+  }
+  drawHandler.enable();
+  showToast(mode === 'rect' ? 'Click and drag to draw a rectangle' : 'Click to place points, double-click to finish');
+}
+
+map.on(L.Draw.Event.CREATED, e => {
+  clearAOI();
+  currentAOI = e.layer;
+  drawnItems.addLayer(currentAOI);
+  document.querySelectorAll('.toolbar-btn').forEach(b => b.classList.remove('active'));
+  drawHandler = null;
+
+  // Enable vertex editing immediately
+  enableEditing(currentAOI);
+  runSearch();
+});
+
+// ── AOI METRICS TOOLTIP ───────────────────────────────────
+let aoiTooltipEl = null;
+let edgeLabelMarkers = [];
+
+function createAoiTooltip() {
+  if (!aoiTooltipEl) {
+    aoiTooltipEl = document.createElement('div');
+    aoiTooltipEl.className = 'aoi-tooltip';
+    aoiTooltipEl.style.display = 'none';
+    document.getElementById('map').appendChild(aoiTooltipEl);
+  }
+  return aoiTooltipEl;
+}
+
+function hideAoiTooltip() {
+  if (aoiTooltipEl) aoiTooltipEl.style.display = 'none';
+  clearEdgeLabels();
+}
+
+// Haversine distance in metres between two LatLng points
+function haversineDist(a, b) {
+  const R = 6371000;
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const sinDLat = Math.sin(dLat / 2);
+  const sinDLng = Math.sin(dLng / 2);
+  const h = sinDLat * sinDLat +
+    Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * sinDLng * sinDLng;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// Bearing between two points in degrees (0–360)
+function bearing(a, b) {
+  const lat1 = a.lat * Math.PI / 180, lat2 = b.lat * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const x = Math.sin(dLng) * Math.cos(lat2);
+  const y = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  return ((Math.atan2(x, y) * 180 / Math.PI) + 360) % 360;
+}
+
+// Deflection angle between two consecutive segments (exterior turn angle)
+function deflection(a, b, c) {
+  const b1 = bearing(a, b);
+  const b2 = bearing(b, c);
+  let delta = b2 - b1;
+  if (delta > 180) delta -= 360;
+  if (delta < -180) delta += 360;
+  return Math.abs(delta);
+}
+
+// Shoelace formula for polygon area in m²
+function polyArea(latlngs) {
+  const pts = latlngs;
+  const n = pts.length;
+  if (n < 3) return 0;
+  const R = 6371000;
+  let area = 0;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const lat1 = pts[i].lat * Math.PI / 180;
+    const lat2 = pts[j].lat * Math.PI / 180;
+    const dLng  = (pts[j].lng - pts[i].lng) * Math.PI / 180;
+    area += dLng * (2 + Math.sin(lat1) + Math.sin(lat2));
+  }
+  return Math.abs(area * R * R / 2);
+}
+
+function formatDist(m) {
+  return m >= 1000 ? (m / 1000).toFixed(2) + ' km' : Math.round(m) + ' m';
+}
+function formatArea(m2) {
+  return m2 >= 1e6 ? (m2 / 1e6).toFixed(2) + ' km²' : Math.round(m2) + ' m²';
+}
+
+function clearEdgeLabels() {
+  edgeLabelMarkers.forEach(m => map.removeLayer(m));
+  edgeLabelMarkers = [];
+}
+
+function midLatLng(a, b) {
+  return L.latLng((a.lat + b.lat) / 2, (a.lng + b.lng) / 2);
+}
+
+function renderEdgeLabels(latlngs) {
+  clearEdgeLabels();
+  const closed = [...latlngs, latlngs[0]];
+  for (let i = 0; i < closed.length - 1; i++) {
+    const a = closed[i], b = closed[i + 1];
+    const dist = haversineDist(a, b);
+    const mid = midLatLng(a, b);
+    const marker = L.marker(mid, {
+      icon: L.divIcon({
+        className: 'edge-label',
+        html: `<span>${formatDist(dist)}</span>`,
+        iconAnchor: [0, 0],
+      }),
+      interactive: false,
+      zIndexOffset: 900,
+    }).addTo(map);
+    edgeLabelMarkers.push(marker);
+  }
+}
+
+function updateAoiTooltip(layer) {
+  const el = createAoiTooltip();
+  let latlngs = [];
+
+  if (layer.getLatLngs) {
+    const raw = layer.getLatLngs();
+    latlngs = Array.isArray(raw[0]) ? raw[0] : raw;
+  }
+  if (latlngs.length < 2) { hideAoiTooltip(); clearEdgeLabels(); return; }
+
+  const closed = [...latlngs, latlngs[0]];
+
+  // Perimeter
+  let perimeter = 0;
+  for (let i = 0; i < closed.length - 1; i++) {
+    perimeter += haversineDist(closed[i], closed[i + 1]);
+  }
+
+  // Area
+  const area = polyArea(latlngs);
+
+  // Centroid
+  const latC = latlngs.reduce((s, p) => s + p.lat, 0) / latlngs.length;
+  const lngC = latlngs.reduce((s, p) => s + p.lng, 0) / latlngs.length;
+
+  // W × H (bounding box)
+  const lats = latlngs.map(p => p.lat), lngs = latlngs.map(p => p.lng);
+  const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+  const W = haversineDist({ lat: minLat, lng: minLng }, { lat: minLat, lng: maxLng });
+  const H = haversineDist({ lat: minLat, lng: minLng }, { lat: maxLat, lng: minLng });
+
+  // Vertices count
+  const vCount = latlngs.length;
+
+  // Last deflection angle
+  let deflAngle = null;
+  if (latlngs.length >= 3) {
+    const n = latlngs.length;
+    deflAngle = deflection(latlngs[n - 3] || latlngs[0], latlngs[n - 2], latlngs[n - 1]);
+  }
+
+  el.innerHTML = `
+    <div class="aoi-tooltip-title">AOI Metrics</div>
+    <div class="aoi-tooltip-row">
+      <span class="aoi-tooltip-key">Area</span>
+      <span class="aoi-tooltip-val">${formatArea(area)}</span>
+    </div>
+    <div class="aoi-tooltip-row">
+      <span class="aoi-tooltip-key">Perimeter</span>
+      <span class="aoi-tooltip-val">${formatDist(perimeter)}</span>
+    </div>
+    <div class="aoi-tooltip-row">
+      <span class="aoi-tooltip-key">W × H</span>
+      <span class="aoi-tooltip-val">${formatDist(W)} × ${formatDist(H)}</span>
+    </div>
+    ${deflAngle !== null ? `
+    <div class="aoi-tooltip-row">
+      <span class="aoi-tooltip-key">Deflection</span>
+      <span class="aoi-tooltip-val">${deflAngle.toFixed(1)}°</span>
+    </div>` : ''}
+    <div class="aoi-tooltip-row">
+      <span class="aoi-tooltip-key">Vertices</span>
+      <span class="aoi-tooltip-val">${vCount}</span>
+    </div>
+    <div class="aoi-tooltip-divider"></div>
+    <div class="aoi-tooltip-row">
+      <span class="aoi-tooltip-key">Center</span>
+      <span class="aoi-tooltip-val">${latC.toFixed(5)}, ${lngC.toFixed(5)}</span>
+    </div>
+  `;
+
+  el.style.display = 'block';
+
+  // Render per-edge length labels on the map
+  renderEdgeLabels(latlngs);
+}
+
+function enableEditing(layer) {
+  if (!layer) return;
+  if (layer.editing) {
+    layer.editing.enable();
+    layer.off('edit').on('edit', () => {
+      updateAoiTooltip(layer);
+      clearTimeout(editDebounce);
+      editDebounce = setTimeout(() => runSearch(), 400);
+    });
+  }
+  // Show tooltip immediately on enable
+  updateAoiTooltip(layer);
+  // Also allow dragging the whole shape
+  if (layer.dragging) layer.dragging.enable();
+}
+
+// Click on AOI to re-enable editing if it was somehow disabled
+drawnItems.on('click', e => {
+  L.DomEvent.stopPropagation(e);
+  enableEditing(e.layer);
+});
+
+function clearAOI() {
+  if (currentAOI) {
+    try { if (currentAOI.editing) currentAOI.editing.disable(); } catch(e){}
+    currentAOI = null;
+  }
+  drawnItems.clearLayers();
+  hideAoiTooltip();
+}
+
+// Update tooltip while drawing in real-time
+map.on('draw:drawvertex', e => {
+  const layers = e.layers;
+  if (layers) {
+    layers.eachLayer(l => updateAoiTooltip(l));
+  }
+});
+
+// ── SATELLITE IMAGE POOL ──────────────────────────────────
+// Real satellite/aerial imagery from public sources (NASA, ESA, USGS, Wikimedia)
+const SAT_IMAGES = {
+  optical_satellite: [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Fujisan_from_ISS.jpg/640px-Fujisan_from_ISS.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_deforestation_2.jpg/640px-PNG_deforestation_2.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Camponotus_flavomarginatus_ant.jpg/320px-Camponotus_flavomarginatus_ant.jpg',
+    'https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73751/world.topo.bathy.200407.3x5400x2700.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/The_Earth_seen_from_Apollo_17.jpg/320px-The_Earth_seen_from_Apollo_17.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3f/Dubai_ISS.jpg/640px-Dubai_ISS.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/Earth_from_Space.jpg/640px-Earth_from_Space.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Нидерланды.jpg/640px-Нидерланды.jpg',
+  ],
+  optical_aerial: [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Lion_waiting_in_Namibia.jpg/320px-Lion_waiting_in_Namibia.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Kota_Kinabalu_aerial_2012.jpg/640px-Kota_Kinabalu_aerial_2012.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Manhattan_from_the_Top_of_the_Rock.jpg/640px-Manhattan_from_the_Top_of_the_Rock.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Lamma_Island_from_the_air.jpg/640px-Lamma_Island_from_the_air.jpg',
+  ],
+  elevation: [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Blue_Marble_2002.png/640px-Blue_Marble_2002.png',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/WorldDEM_DTM_visual.jpg/640px-WorldDEM_DTM_visual.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Lidar_derived_digital_terrain_model.jpg/640px-Lidar_derived_digital_terrain_model.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Sentinel_3B_elevation_model.jpg/640px-Sentinel_3B_elevation_model.jpg',
+  ],
+  sar: [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/SAR_ERS_flooding_Germany.jpg/640px-SAR_ERS_flooding_Germany.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/9/97/SAR_image_of_Paris.jpg/640px-SAR_image_of_Paris.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Sentinel-1_SAR_image.jpg/640px-Sentinel-1_SAR_image.jpg',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/0/08/ERS2_SAR_etna.jpg/640px-ERS2_SAR_etna.jpg',
+  ],
+  basemap: [
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ec/World_Map_1689.JPG/640px-World_Map_1689.JPG',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/World_map_-_low_resolution.svg/640px-World_map_-_low_resolution.svg.png',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Blue_Marble_2002.png/640px-Blue_Marble_2002.png',
+    'https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/NASA_Visible_Earth_-_The_Blue_Marble_-_Land_Surface,_Ocean_Color_and_Sea_Ice_-_Aus.jpg/640px-NASA_Visible_Earth_-_The_Blue_Marble_-_Land_Surface,_Ocean_Color_and_Sea_Ice_-_Aus.jpg',
+  ],
+};
+
+// Curated Unsplash satellite-style images (reliable, free, no auth needed)
+const THUMB_POOL = [
+  // satellite city/land views
+  'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1614730321146-b6fa6a46bcb4?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1501854140801-50d01698950b?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1542401886-65d6c61db217?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1523978591478-c753949ff840?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1416339306562-f3d12fefd36f?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1489824904134-891ab64532f1?w=200&h=200&fit=crop',
+  // aerial/urban
+  'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1444723121867-7a241cacace9?w=200&h=200&fit=crop',
+  'https://images.unsplash.com/photo-1522083165195-3424ed129620?w=200&h=200&fit=crop',
+];
+
+function getThumb(dataType, idx) {
+  const pool = THUMB_POOL;
+  return pool[idx % pool.length];
+}
+
+// ── LABELS ────────────────────────────────────────────────
+const DATATYPE_LABEL = {
+  'optical_satellite': 'Optical Satellite',
+  'optical_aerial':    'Optical Aerial',
+  'elevation':         'Elevation',
+  'sar':               'SAR Satellite',
+  'basemap':           'Basemap',
+};
+
+const rndI = (a,b) => Math.floor(a + Math.random()*(b-a+1));
+
+// ═══════════════════════════════════════════════════════════
+//  REAL_LISTINGS — вставь сюда реальные данные
+//
+//  Поля каждого листинга:
+//    id         — уникальный ID (строка)
+//    provider   — провайдер ('Maxar', 'Airbus', 'ICEYE', ...)
+//    product    — название продукта ('Vantor-15cm', 'SkySat', ...)
+//    type       — 'optical' | 'sar'
+//    dataType   — 'optical_satellite' | 'optical_aerial' | 'elevation' | 'sar' | 'basemap'
+//    dateStr    — дата съёмки 'YYYY-MM-DD'
+//    resCm      — разрешение в сантиметрах (число, напр. 15)
+//    bandCount  — количество полос (число, напр. 4)
+//    cloud      — облачность % (число; 0 для SAR)
+//    nadir      — off-nadir угол в градусах
+//    area       — площадь заказа в км² (число)
+//    price      — цена за км² (число)
+//    bounds     — [[lat_min, lng_min], [lat_max, lng_max]]
+//    thumb      — URL превью (null → берётся из пула)
+// ═══════════════════════════════════════════════════════════
+const REAL_LISTINGS = [
+  {
+    id: 'IMG-001',
+    provider: 'Vantor',
+    product: 'Vantor-15cm',
+    type: 'optical',
+    dataType: 'optical_satellite',
+    dateStr: '2026-02-21',
+    resCm: 15,
+    bandCount: 4,
+    cloud: 23,
+    nadir: 12,
+    area: 25.17,
+    price: 18.00,
+    // Дублин — центр города
+    bounds: [[53.327, -6.285], [53.355, -6.235]],
+    thumb: null,
+  },
+  {
+    id: 'IMG-002',
+    provider: 'Vantor',
+    product: 'Vantor-50cm',
+    type: 'optical',
+    dataType: 'optical_satellite',
+    dateStr: '2026-02-21',
+    resCm: 50,
+    bandCount: 4,
+    cloud: 23,
+    nadir: 8,
+    area: 25.17,
+    price: 12.00,
+    // Дублинский порт / Ringsend
+    bounds: [[53.335, -6.230], [53.360, -6.185]],
+    thumb: null,
+  },
+  {
+    id: 'IMG-003',
+    provider: 'Vantor',
+    product: 'Vantor-50cm',
+    type: 'optical',
+    dataType: 'optical_satellite',
+    dateStr: '2026-02-21',
+    resCm: 50,
+    bandCount: 8,
+    cloud: 23,
+    nadir: 8,
+    area: 25.17,
+    price: 15.00,
+    // Дан Лэри (Dún Laoghaire) — южное побережье
+    bounds: [[53.285, -6.165], [53.310, -6.115]],
+    thumb: null,
+  },
+  {
+    id: 'IMG-004',
+    provider: 'Vantor',
+    product: 'Vantor-30cm',
+    type: 'optical',
+    dataType: 'optical_satellite',
+    dateStr: '2026-02-21',
+    resCm: 30,
+    bandCount: 4,
+    cloud: 23,
+    nadir: 15,
+    area: 25.17,
+    price: 16.00,
+    // Финикс Парк (Phoenix Park) — запад
+    bounds: [[53.355, -6.360], [53.382, -6.305]],
+    thumb: null,
+  },
+  {
+    id: 'IMG-005',
+    provider: 'Maxar',
+    product: 'WorldView-3 Standard',
+    type: 'optical',
+    dataType: 'optical_satellite',
+    dateStr: '2026-01-14',
+    resCm: 31,
+    bandCount: 8,
+    cloud: 5,
+    nadir: 10,
+    area: 112.40,
+    price: 22.50,
+    // Север — Swords / аэропорт
+    bounds: [[53.415, -6.270], [53.470, -6.170]],
+    thumb: null,
+  },
+  {
+    id: 'IMG-006',
+    provider: 'Airbus',
+    product: 'Pléiades Neo 4-Band',
+    type: 'optical',
+    dataType: 'optical_satellite',
+    dateStr: '2025-12-03',
+    resCm: 30,
+    bandCount: 4,
+    cloud: 11,
+    nadir: 7,
+    area: 68.90,
+    price: 19.00,
+    // Толлаймор / Бре (Bray) — юг
+    bounds: [[53.195, -6.115], [53.250, -6.040]],
+    thumb: null,
+  },
+  {
+    id: 'IMG-007',
+    provider: 'ICEYE',
+    product: 'ICEYE SAR Stripmap',
+    type: 'sar',
+    dataType: 'sar',
+    dateStr: '2026-02-10',
+    resCm: 100,
+    bandCount: 2,
+    cloud: 0,
+    nadir: 30,
+    area: 42.00,
+    price: 30.00,
+    // Северный Дублин — Drumcondra / Clontarf
+    bounds: [[53.358, -6.268], [53.385, -6.205]],
+    thumb: null,
+  },
+  {
+    id: 'IMG-008',
+    provider: 'Planet Labs',
+    product: 'SkySat Collect',
+    type: 'optical',
+    dataType: 'optical_satellite',
+    dateStr: '2026-01-28',
+    resCm: 50,
+    bandCount: 4,
+    cloud: 18,
+    nadir: 22,
+    area: 42.80,
+    price: 10.00,
+    // Талахт (Tallaght) — юго-запад
+    bounds: [[53.285, -6.400], [53.325, -6.340]],
+    thumb: null,
+  },
+  {
+    id: 'IMG-009',
+    provider: 'Airbus',
+    product: 'SPOT-7 Mosaic',
+    type: 'optical',
+    dataType: 'optical_aerial',
+    dateStr: '2025-11-19',
+    resCm: 150,
+    bandCount: 4,
+    cloud: 8,
+    nadir: 5,
+    area: 55.00,
+    price: 6.00,
+    // Sandyford / Leopardstown — юго-запад
+    bounds: [[53.262, -6.245], [53.295, -6.180]],
+    thumb: null,
+  },
+  {
+    id: 'IMG-010',
+    provider: 'Vantor',
+    product: 'Vantor-15cm 8-Band',
+    type: 'optical',
+    dataType: 'optical_satellite',
+    dateStr: '2026-02-05',
+    resCm: 15,
+    bandCount: 8,
+    cloud: 2,
+    nadir: 9,
+    area: 18.60,
+    price: 25.00,
+    // Хоут (Howth) — северный мыс
+    bounds: [[53.370, -6.090], [53.395, -6.040]],
+    thumb: null,
+  },
+  // ── добавляй новые листинги сюда в том же формате ──
+];
+
+let allResults = [];
+let currentDetail = null;
+let footprintLayers = [];
+
+// ── FILTER REAL LISTINGS ───────────────────────────────────
+function generateResults() {
+  const dateFrom   = document.getElementById('dateFrom').value   || '2000-01-01';
+  const dateTo     = document.getElementById('dateTo').value     || '2099-12-31';
+  const sensor     = document.getElementById('sensorType').value;
+  const resFilter  = document.getElementById('resolution').value;
+  const maxCloud   = parseInt(document.getElementById('cloudCover').value);
+  const provFilter = document.getElementById('provider').value;
+
+  let aoiBounds = null;
+  if (currentAOI) aoiBounds = currentAOI.getBounds();
+
+  return REAL_LISTINGS.filter(item => {
+    // Date range
+    if (item.dateStr < dateFrom || item.dateStr > dateTo) return false;
+    // Sensor type
+    if (sensor !== 'all' && item.type !== sensor) return false;
+    // Data type card
+    if (activeDataType !== 'all' && item.dataType !== activeDataType) return false;
+    // Resolution (resCm → convert to metres for filter)
+    const resM = item.resCm / 100;
+    if (resFilter === 'high'   && resM >= 1)              return false;
+    if (resFilter === 'medium' && (resM < 1 || resM > 3)) return false;
+    if (resFilter === 'low'    && resM <= 3)              return false;
+    // Cloud cover
+    if (item.type === 'optical' && item.cloud > maxCloud) return false;
+    // Provider
+    if (provFilter !== 'all' && !item.provider.toLowerCase().startsWith(provFilter)) return false;
+    // Spatial overlap
+    if (aoiBounds) {
+      const itemBounds = L.latLngBounds(item.bounds[0], item.bounds[1]);
+      if (!aoiBounds.overlaps(itemBounds)) return false;
+    }
+    return true;
+  }).map((item, idx) => ({ ...item, thumbIdx: idx }));
+}
+
+// ── CANVAS THUMBNAIL ─────────────────────────────────────
+function drawThumb(canvas, item, w, h) {
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (item.type === 'sar') {
+    const grd = ctx.createLinearGradient(0,0,w,h);
+    grd.addColorStop(0,'#1a1a1a'); grd.addColorStop(0.4,'#3a3a3a');
+    grd.addColorStop(0.7,'#555'); grd.addColorStop(1,'#222');
+    ctx.fillStyle = grd; ctx.fillRect(0,0,w,h);
+    for (let j=0;j<1200;j++) {
+      const x=Math.random()*w, y=Math.random()*h, v=Math.random();
+      ctx.fillStyle=`rgba(${v>.97?255:180},${v>.97?255:180},${v>.97?255:180},${v>.95?.9:.15})`;
+      ctx.fillRect(x,y,1,1);
+    }
+    ctx.fillStyle='rgba(200,200,200,0.18)';
+    for(let j=0;j<8;j++) ctx.fillRect(Math.random()*w*.8,Math.random()*h*.8,10+Math.random()*20,10+Math.random()*20);
+  } else {
+    const hue = item.hue;
+    const grd = ctx.createLinearGradient(0,0,w,h);
+    grd.addColorStop(0,`hsl(${hue},30%,18%)`);
+    grd.addColorStop(0.5,`hsl(${hue+15},25%,28%)`);
+    grd.addColorStop(1,`hsl(${hue-10},35%,14%)`);
+    ctx.fillStyle=grd; ctx.fillRect(0,0,w,h);
+    for(let j=0;j<12;j++){
+      ctx.fillStyle=`hsla(${80+Math.random()*60},40%,${25+Math.random()*20}%,0.5)`;
+      ctx.fillRect(Math.random()*w,Math.random()*h,15+Math.random()*35,10+Math.random()*20);
+    }
+    ctx.strokeStyle='rgba(200,180,140,0.25)'; ctx.lineWidth=1;
+    for(let j=0;j<4;j++){
+      ctx.beginPath();
+      ctx.moveTo(Math.random()*w,Math.random()*h);
+      ctx.lineTo(Math.random()*w,Math.random()*h);
+      ctx.stroke();
+    }
+    if (item.cloud > 20) {
+      const cld = ctx.createRadialGradient(w*.3,h*.4,0,w*.3,h*.4,w*.5);
+      cld.addColorStop(0,`rgba(255,255,255,${item.cloud/300})`);
+      cld.addColorStop(1,'rgba(255,255,255,0)');
+      ctx.fillStyle=cld; ctx.fillRect(0,0,w,h);
+    }
+  }
+}
+
+// ── SEARCH ───────────────────────────────────────────────
+function runSearch() {
+  footprintLayers.forEach(l => map.removeLayer(l));
+  footprintLayers = [];
+  closeDetail();
+  const list = document.getElementById('resultsList');
+  list.innerHTML = '<div style="display:flex;justify-content:center;padding:30px"><div class="spinner"></div></div>';
+  setTimeout(() => {
+    allResults = generateResults();
+    allResults.sort((a,b) => new Date(b.dateStr)-new Date(a.dateStr));
+    renderResults();
+    renderFootprints();
+  }, 400);
+}
+
+function fmtDate(str) {
+  if (!str) return str;
+  const d = new Date(str + 'T00:00:00');
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function renderResults() {
+  const list = document.getElementById('resultsList');
+  document.getElementById('resultCount').textContent = allResults.length;
+  if (!allResults.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><h4>No imagery found</h4><p>Try adjusting the filter parameters</p></div>`;
+    return;
+  }
+  list.innerHTML = allResults.map(item => `
+    <div class="result-card" id="card-${item.id}" onclick="selectItem('${item.id}')">
+      <div class="card-thumb">
+        <img src="${item.thumb || getThumb(item.dataType, item.thumbIdx)}"
+             alt="${item.product}"
+             onerror="this.style.display='none';this.parentElement.style.background='#1a1a1a'" />
+        <span class="card-type type-${item.type}">${DATATYPE_LABEL[item.dataType] || (item.type==='sar'?'SAR':'OPT')}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-date">${fmtDate(item.dateStr)}</div>
+        <div class="card-title">${item.product}</div>
+        <div class="card-specs">
+          <div class="card-spec-row"><span class="spec-key">${item.bandCount} Band</span></div>
+          <div class="card-spec-row">
+            <span class="spec-key">Resolution:</span>
+            <span class="spec-val">${item.resCm}cm</span>
+          </div>
+          <div class="card-spec-row">
+            <span class="spec-key">Order Area:</span>
+            <span class="spec-val">${item.area} km²</span>
+          </div>
+          ${item.type !== 'sar' ? `
+          <div class="card-spec-row">
+            <span class="spec-key">Cloud Cover:</span>
+            <span class="spec-val">${item.cloud}%</span>
+          </div>` : ''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function sortResults() {
+  const by = document.getElementById('sortSelect').value;
+  if (by==='date')  allResults.sort((a,b)=>new Date(b.dateStr)-new Date(a.dateStr));
+  if (by==='price') allResults.sort((a,b)=>a.price-b.price);
+  if (by==='cloud') allResults.sort((a,b)=>a.cloud-b.cloud);
+  if (by==='res')   allResults.sort((a,b)=>a.resCm-b.resCm);
+  renderResults();
+}
+
+// ── FOOTPRINTS ───────────────────────────────────────────
+function renderFootprints() {
+  allResults.forEach(item => {
+    const color = item.type === 'sar' ? '#aaaaaa' : '#ffffff';
+    const rect = L.rectangle(item.bounds, {
+      color,
+      weight: 1.5,
+      opacity: 0.5,
+      fillOpacity: 0.04,
+      fillColor: color,
+    }).addTo(map);
+    rect.itemId = item.id;
+
+    // Hover: подсветка при наведении
+    rect.on('mouseover', function() {
+      if (rect.itemId !== (currentDetail && currentDetail.id)) {
+        this.setStyle({ fillOpacity: 0.18, weight: 2, opacity: 1 });
+      }
+      this.bringToFront();
+    });
+    rect.on('mouseout', function() {
+      if (rect.itemId !== (currentDetail && currentDetail.id)) {
+        this.setStyle({ fillOpacity: 0.04, weight: 1.5, opacity: 0.5 });
+      }
+    });
+
+    rect.on('click', () => selectItem(item.id));
+
+    // Tooltip с деталями при ховере
+    rect.bindTooltip(`
+      <div style="font-family:'Inter',sans-serif;font-size:12px;line-height:1.6;padding:2px 0;">
+        <div style="font-weight:700;font-size:13px;margin-bottom:3px;">${item.product}</div>
+        <div style="color:#aaa;">${item.provider} &nbsp;·&nbsp; ${item.dateStr}</div>
+        <div style="color:#aaa;">Resolution: <span style="color:#fff">${item.resCm}cm</span></div>
+        <div style="color:#aaa;">${item.bandCount} Band &nbsp;·&nbsp; Cloud: <span style="color:#fff">${item.type==='sar'?'N/A':item.cloud+'%'}</span></div>
+        <div style="color:#aaa;">Area: <span style="color:#fff">${item.area} km²</span></div>
+      </div>
+    `, {
+      sticky: true,
+      opacity: 1,
+      className: 'footprint-tooltip',
+    });
+
+    footprintLayers.push(rect);
+  });
+}
+
+function highlightFootprint(id) {
+  footprintLayers.forEach(l => {
+    const active = l.itemId === id;
+    l.setStyle({ fillOpacity: active?0.25:0.05, weight: active?2:1 });
+  });
+}
+
+// ── DETAIL PANEL ─────────────────────────────────────────
+function selectItem(id) {
+  const item = allResults.find(r=>r.id===id);
+  if (!item) return;
+  currentDetail = item;
+
+  document.querySelectorAll('.result-card').forEach(c=>c.classList.remove('selected'));
+  const card = document.getElementById('card-'+id);
+  if (card) { card.classList.add('selected'); card.scrollIntoView({block:'nearest',behavior:'smooth'}); }
+
+  highlightFootprint(id);
+  map.fitBounds(item.bounds, { padding:[40,40] });
+
+  document.getElementById('detailTitle').textContent = item.product;
+
+  const detailImg = document.getElementById('detailImg');
+  detailImg.src = item.thumb || getThumb(item.dataType, item.thumbIdx);
+  detailImg.alt = item.product;
+
+  document.getElementById('detailBody').innerHTML = `
+    <div class="detail-row"><span class="key">Image ID</span><span class="val">${item.id}</span></div>
+    <div class="detail-row"><span class="key">Provider</span><span class="val">${item.provider}</span></div>
+    <div class="detail-row"><span class="key">Product</span><span class="val">${item.product}</span></div>
+    <div class="detail-row"><span class="key">Capture Date</span><span class="val">${fmtDate(item.dateStr)}</span></div>
+    <div class="detail-row"><span class="key">Data Type</span><span class="val">${DATATYPE_LABEL[item.dataType] || '—'}</span></div>
+    <div class="detail-row"><span class="key">Sensor Type</span><span class="val">${item.type==='sar'?'SAR':'Optical'}</span></div>
+    <div class="detail-row"><span class="key">Resolution</span><span class="val">${item.resCm} cm</span></div>
+    <div class="detail-row"><span class="key">Bands</span><span class="val">${item.bandCount} Band</span></div>
+    <div class="detail-row"><span class="key">Cloud Cover</span><span class="val">${item.type==='sar'?'N/A':item.cloud+'%'}</span></div>
+    <div class="detail-row"><span class="key">Off-Nadir Angle</span><span class="val">${item.nadir}°</span></div>
+    <div class="detail-row"><span class="key">Order Area</span><span class="val">${item.area} km²</span></div>
+    <div class="detail-row"><span class="key">Price / km²</span><span class="val">$${Number(item.price).toFixed(2)}</span></div>
+    <div class="detail-row"><span class="key">Est. Total</span><span class="val">$${(item.price * item.area).toFixed(2)}</span></div>
+  `;
+
+  document.getElementById('detailPanel').classList.add('open');
+}
+
+function closeDetail() {
+  document.getElementById('detailPanel').classList.remove('open');
+  currentDetail = null;
+  footprintLayers.forEach(l=>l.setStyle({fillOpacity:0.05,weight:1}));
+  document.querySelectorAll('.result-card').forEach(c=>c.classList.remove('selected'));
+}
+
+// ── ENQUIRE MODAL ────────────────────────────────────────
+function openEnquire(item) {
+  const ctx = document.getElementById('modalContext');
+  const info = document.getElementById('modalContextInfo');
+  if (item) {
+    ctx.style.display = 'block';
+    info.innerHTML = [
+      item.product, item.provider, fmtDate(item.dateStr),
+      item.resCm+'cm', item.bandCount+' Band',
+      item.area+' km²', '$'+Number(item.price).toFixed(2)+'/km²'
+    ].map(v=>`<span class="modal-tag">${v}</span>`).join('');
+  } else {
+    ctx.style.display = 'none';
+  }
+  document.getElementById('modalBackdrop').classList.add('open');
+}
+
+function closeEnquire() {
+  document.getElementById('modalBackdrop').classList.remove('open');
+}
+
+function handleBackdropClick(e) {
+  if (e.target === document.getElementById('modalBackdrop')) closeEnquire();
+}
+
+function submitEnquiry() {
+  const name  = document.getElementById('fName').value.trim();
+  const lname = document.getElementById('lName').value.trim();
+  const email = document.getElementById('fEmail').value.trim();
+  if (!name || !lname || !email) {
+    showToast('Please fill in required fields (Name, Email)');
+    return;
+  }
+  closeEnquire();
+  showToast('Enquiry sent! Our team will contact you shortly.');
+  ['fName','fLname','fEmail','fOrg','fMessage'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('fUseCase').selectedIndex = 0;
+}
+
+// ── TOAST ─────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2800);
+}
+
+// ── INIT ─────────────────────────────────────────────────
+setTimeout(()=>{
+  map.invalidateSize();
+  map.setView([53.35, -6.30], 10);
+  runSearch();
+}, 300);
+</script>
+</body>
+</html>
