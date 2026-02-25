@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bentley Geo Search — Satellite Imagery</title>
+  <title>Bentley Geospatial Explorer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -261,8 +261,20 @@
     }
     .enquire-detail-btn:hover { background: #e0e0e0; }
 
+    .integration-btn {
+      flex: 1; padding: 8px 6px; background: none;
+      border: 1px solid var(--border); border-radius: 4px;
+      color: var(--text-muted); font-size: 11px; font-weight: 600;
+      cursor: pointer; transition: all .2s; text-align: center;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+      font-family: 'Inter', sans-serif;
+    }
+    .integration-btn:hover { border-color: #ffffff; color: #ffffff; background: rgba(255,255,255,.06); }
+    .integration-icon { font-size: 13px; }
+
     /* ── MAP TOOLBAR (right side, on map) ── */
-    .leaflet-control-attribution { display: none; }
+    .leaflet-control-attribution { font-size: 12px !important; color: #fff !important; background: rgba(0,0,0,.45) !important; padding: 3px 8px !important; border-radius: 4px !important; }
+    .leaflet-control-attribution a { color: #aaa !important; }
 
     .map-toolbar {
       position: absolute; top: 10px; right: 10px; z-index: 500;
@@ -492,6 +504,115 @@
       .left-panel { width: 280px; }
       .detail-panel { width: 260px; }
     }
+
+    /* ── MOBILE ── */
+    @media (max-width: 767px) {
+      header {
+        padding: 0 12px; gap: 10px; height: 48px;
+      }
+      .logo-text span { font-size: 12px; letter-spacing: 1px; }
+      .search-bar { max-width: none; flex: 1; }
+      .header-tabs { display: none; }
+      .enquire-header-btn { display: none; }
+
+      .app { flex-direction: column; padding-top: 48px; }
+
+      /* Map fills screen */
+      .app > div:last-child { flex: 1; min-height: 0; }
+
+      /* Left panel → bottom sheet */
+      .left-panel {
+        position: fixed;
+        bottom: 0; left: 0; right: 0;
+        width: 100% !important;
+        height: auto;
+        max-height: 75vh;
+        border-right: none;
+        border-top: 1px solid var(--border);
+        border-radius: 16px 16px 0 0;
+        z-index: 900;
+        transform: translateY(calc(100% - 48px));
+        transition: transform .35s cubic-bezier(.4,0,.2,1);
+        overflow: hidden;
+      }
+      .left-panel.sheet-open {
+        transform: translateY(0);
+      }
+
+      /* Drag handle */
+      .sheet-handle {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        flex-shrink: 0;
+        background: var(--bg-panel);
+        border-bottom: 1px solid var(--border);
+        padding-top: 8px;
+      }
+      .sheet-handle-bar {
+        width: 36px; height: 4px;
+        background: #444; border-radius: 2px;
+        margin-bottom: 8px; cursor: pointer;
+      }
+
+      /* Tabs inside handle */
+      .sheet-tabs {
+        display: flex; width: 100%;
+        border-top: 1px solid var(--border);
+      }
+      .sheet-tab {
+        flex: 1; padding: 10px;
+        font-size: 12px; font-weight: 700;
+        background: none; border: none;
+        color: var(--text-muted);
+        cursor: pointer; text-transform: uppercase;
+        letter-spacing: .5px;
+        border-bottom: 2px solid transparent;
+        transition: all .15s;
+      }
+      .sheet-tab.active {
+        color: #fff;
+        border-bottom-color: #fff;
+      }
+
+      /* Tab content scrollable */
+      .sheet-tab-content {
+        overflow-y: auto;
+        max-height: calc(75vh - 80px);
+      }
+      .results-section { max-height: none; overflow-y: visible; }
+
+      /* Detail panel full screen on mobile */
+      .detail-panel {
+        position: fixed !important;
+        inset: 48px 0 0 0 !important;
+        width: 100% !important;
+        z-index: 950;
+        border-left: none;
+      }
+
+      /* FAB search button */
+      .mobile-search-fab {
+        display: flex;
+        position: fixed;
+        bottom: 60px; left: 50%; transform: translateX(-50%);
+        z-index: 910;
+        background: #fff; color: #000;
+        border: none; border-radius: 24px;
+        padding: 10px 24px;
+        font-size: 13px; font-weight: 700;
+        letter-spacing: .5px; text-transform: uppercase;
+        box-shadow: 0 4px 16px rgba(0,0,0,.5);
+        cursor: pointer;
+        transition: opacity .2s;
+      }
+      .mobile-search-fab.hidden { opacity: 0; pointer-events: none; }
+    }
+
+    @media (min-width: 768px) {
+      .sheet-handle { display: none; }
+      .mobile-search-fab { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -499,10 +620,8 @@
 <!-- HEADER -->
 <header>
   <div class="logo">
-    <div class="logo-icon" style="background:#fff;border-radius:3px;font-family:'Inter',sans-serif;font-weight:800;font-size:16px;color:#000;width:30px;height:30px;display:flex;align-items:center;justify-content:center;letter-spacing:-1px;">B</div>
     <div class="logo-text" style="display:flex;flex-direction:column;line-height:1.1;">
-      <span style="font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#fff;">BENTLEY</span>
-      <span style="font-size:9px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;color:#888;">Geo Search</span>
+      <span style="font-size:14px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#fff;">Geospatial Explorer</span>
     </div>
   </div>
 
@@ -520,41 +639,47 @@
 <div class="app">
 
   <!-- LEFT PANEL -->
-  <div class="left-panel">
+  <div class="left-panel" id="leftPanel">
+    <!-- MOBILE HANDLE + TABS -->
+    <div class="sheet-handle" id="sheetHandle">
+      <div class="sheet-handle-bar" onclick="toggleSheet()"></div>
+      <div class="sheet-tabs" id="sheetTabs">
+        <button class="sheet-tab active" id="tabFilters" onclick="switchSheetTab('filters')">Filters</button>
+        <button class="sheet-tab" id="tabResults" onclick="switchSheetTab('results')">Results</button>
+      </div>
+    </div>
 
+    <!-- FILTERS TAB CONTENT -->
+    <div id="sheetFiltersContent" class="sheet-tab-content">
     <!-- DATA TYPE SELECTOR -->
     <div class="datatype-section">
       <div class="filters-title">Data Type</div>
       <div class="datatype-grid">
         <button class="datatype-card active" data-type="all" onclick="selectDataType('all', this)">
-          <span class="datatype-icon">🌐</span>
           <span class="datatype-label">All</span>
         </button>
         <button class="datatype-card" data-type="optical_satellite" onclick="selectDataType('optical_satellite', this)">
-          <span class="datatype-icon">🛰</span>
-          <span class="datatype-label">Optical Satellite</span>
-        </button>
-        <button class="datatype-card" data-type="optical_aerial" onclick="selectDataType('optical_aerial', this)">
-          <span class="datatype-icon">✈️</span>
-          <span class="datatype-label">Optical Aerial</span>
-        </button>
-        <button class="datatype-card" data-type="elevation" onclick="selectDataType('elevation', this)">
-          <span class="datatype-icon">⛰</span>
-          <span class="datatype-label">Elevation Satellite</span>
+          <span class="datatype-label">Optical</span>
         </button>
         <button class="datatype-card" data-type="sar" onclick="selectDataType('sar', this)">
-          <span class="datatype-icon">📡</span>
-          <span class="datatype-label">SAR Satellite</span>
+          <span class="datatype-label">SAR</span>
         </button>
-        <button class="datatype-card" data-type="basemap" onclick="selectDataType('basemap', this)">
-          <span class="datatype-icon">🗺</span>
-          <span class="datatype-label">Basemaps Satellite</span>
+        <button class="datatype-card" data-type="optical_aerial" onclick="selectDataType('optical_aerial', this)">
+          <span class="datatype-label">Aerial</span>
+        </button>
+        <button class="datatype-card" data-type="elevation" onclick="selectDataType('elevation', this)">
+          <span class="datatype-label">Elevation</span>
+        </button>
+        <button class="datatype-card" data-type="hyperspectral" onclick="selectDataType('hyperspectral', this)">
+          <span class="datatype-label">Hyperspectral</span>
         </button>
       </div>
     </div>
 
     <div class="filters-section">
       <div class="filters-title">Search Filters</div>
+
+
 
       <div class="filter-row">
         <div class="filter-group">
@@ -569,20 +694,35 @@
 
       <div class="filter-row">
         <div class="filter-group">
-          <label>Sensor Type</label>
-          <select id="sensorType">
-            <option value="all">All Types</option>
-            <option value="optical">Optical</option>
-            <option value="sar">SAR</option>
-          </select>
-        </div>
-        <div class="filter-group">
           <label>Resolution</label>
           <select id="resolution">
             <option value="all">Any</option>
             <option value="high">High (&lt;1 m)</option>
             <option value="medium">Medium (1–3 m)</option>
             <option value="low">Low (&gt;3 m)</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Provider</label>
+          <select id="provider">
+            <option value="all">All Providers</option>
+            <optgroup label="Optical">
+              <option value="vantor">Vantor</option>
+              <option value="maxar">Maxar</option>
+              <option value="airbus">Airbus</option>
+              <option value="planet">Planet Labs</option>
+              <option value="satellogic">Satellogic</option>
+              <option value="vexcel">Vexcel Imaging</option>
+            </optgroup>
+            <optgroup label="SAR">
+              <option value="iceye">ICEYE</option>
+              <option value="capella">Capella Space</option>
+              <option value="umbra">Umbra</option>
+            </optgroup>
+            <optgroup label="Open Data">
+              <option value="sentinel">Sentinel (ESA)</option>
+              <option value="landsat">Landsat (USGS)</option>
+            </optgroup>
           </select>
         </div>
       </div>
@@ -594,27 +734,23 @@
       </div>
 
       <div class="filter-group" style="margin-bottom:8px">
-        <label>Provider</label>
-        <select id="provider">
-          <option value="all">All Providers</option>
-          <option value="vantor">Vantor</option>
-          <option value="maxar">Maxar</option>
-          <option value="planet">Planet Labs</option>
-          <option value="airbus">Airbus</option>
-          <option value="iceye">ICEYE</option>
-          <option value="satellogic">Satellogic</option>
-        </select>
+        <label>Min Coverage: <span class="range-val" id="coverageVal">80%</span></label>
+        <input type="range" id="coverage" min="0" max="100" value="80"
+               oninput="document.getElementById('coverageVal').textContent=this.value+'%'" />
       </div>
 
       <button class="search-btn" onclick="runSearch()">🔍 Search Imagery</button>
     </div>
 
-    <!-- RESULTS -->
+    </div><!-- /sheetFiltersContent -->
+
+    <!-- RESULTS TAB CONTENT -->
+    <div id="sheetResultsContent" class="sheet-tab-content">
     <div class="results-header">
       <div class="results-count">Found: <strong id="resultCount">0</strong></div>
       <select class="sort-select" id="sortSelect" onchange="sortResults()">
         <option value="date">Date ↓</option>
-        <option value="price">Price ↑</option>
+
         <option value="cloud">Cloud Cover</option>
         <option value="res">Resolution</option>
       </select>
@@ -622,11 +758,12 @@
 
     <div id="resultsList" class="results-list">
       <div class="empty-state" id="emptyState">
-        <div class="empty-icon">🛰</div>
+        <div class="empty-icon">◎</div>
         <h4>Start your search</h4>
         <p>Draw an area of interest on the map or set filter parameters, then click "Search Imagery".</p>
       </div>
     </div>
+    </div><!-- /sheetResultsContent -->
   </div>
 
   <!-- MAP -->
@@ -649,10 +786,6 @@
         <button class="toolbar-btn" id="btnClear" onclick="clearAOI()" title="Clear AOI">✕</button>
       </div>
 
-      <!-- Labels toggle -->
-      <div class="toolbar-group">
-        <button class="toolbar-btn" id="btnLabels" onclick="toggleLabels()" title="Toggle City Labels">𝐀</button>
-      </div>
 
       <!-- Layer switcher as single icon button with tooltip -->
       <div class="toolbar-group" style="position:relative;">
@@ -660,11 +793,12 @@
       </div>
       <div class="layer-switcher" id="layerSwitcher" style="display:none;">
         <div class="layer-switcher-title">Base Layer</div>
-        <button class="layer-btn active" id="lyrEsri" onclick="switchLayer('esri')">🌍 ESRI Satellite</button>
-        <button class="layer-btn" id="lyrSat" onclick="switchLayer('satellite')">🛰 Google Satellite</button>
-        <button class="layer-btn" id="lyrHybrid" onclick="switchLayer('hybrid')">🗺 Google Hybrid</button>
-        <button class="layer-btn" id="lyrDark" onclick="switchLayer('dark')">🌑 Dark</button>
-        <button class="layer-btn" id="lyrOSM" onclick="switchLayer('osm')">🗾 OpenStreetMap</button>
+        <button class="layer-btn active" id="lyrCesium" onclick="switchLayer('cesium')">Cesium Ion Aerial</button>
+        <button class="layer-btn" id="lyrEsri" onclick="switchLayer('esri')">ESRI Satellite</button>
+        <button class="layer-btn" id="lyrSat" onclick="switchLayer('satellite')">Google Satellite</button>
+        <button class="layer-btn" id="lyrHybrid" onclick="switchLayer('hybrid')">Google Hybrid</button>
+        <button class="layer-btn" id="lyrDark" onclick="switchLayer('dark')">Dark</button>
+        <button class="layer-btn" id="lyrOSM" onclick="switchLayer('osm')">OpenStreetMap</button>
       </div>
 
     </div>
@@ -760,7 +894,8 @@
 const GOOGLE_API_KEY = 'INSERT_YOUR_KEY_HERE';
 
 // ── MAP INIT ──────────────────────────────────────────────
-const map = L.map('map', { zoomControl: false }).setView([48, 25], 4);
+const map = L.map('map', { zoomControl: false, attributionControl: true }).setView([48, 25], 4);
+map.attributionControl.setPrefix('Developed by Denys Antonov, E&amp;V');
 
 const tileLayers = {
   esri: L.tileLayer(
@@ -773,27 +908,47 @@ const tileLayers = {
   osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }),
   satellite: null,
   hybrid: null,
+  cesium: null,
 };
 
-let activeLayerKey = 'esri';
-tileLayers.esri.addTo(map);
+// ── CESIUM ION · Bing Aerial (lazy — created only on first click) ──
+const BING_SUBDOMAINS = ['t0','t1','t2','t3'];
+
+function tileToQuadkey(x, y, z) {
+  let q = '';
+  for (let i = z; i > 0; i--) {
+    let d = 0, m = 1 << (i - 1);
+    if (x & m) d |= 1;
+    if (y & m) d |= 2;
+    q += d;
+  }
+  return q;
+}
+
+function createCesiumLayer() {
+  const BingAerialLayer = L.TileLayer.extend({
+    getTileUrl(coords) {
+      const qk  = tileToQuadkey(coords.x, coords.y, coords.z);
+      const sub = BING_SUBDOMAINS[(coords.x + coords.y) % BING_SUBDOMAINS.length];
+      return `https://ecn.${sub}.tiles.virtualearth.net/tiles/a${qk}.jpeg?g=13816&mkt=en-US`;
+    }
+  });
+  return new BingAerialLayer('', {
+    attribution: '',
+    maxZoom: 20, minZoom: 1
+  });
+}
+
+tileLayers.cesium = createCesiumLayer();
+let activeLayerKey = 'cesium';
+tileLayers.cesium.addTo(map);
 
 // ESRI labels overlay (city names, roads — transparent layer on top)
 const esriLabels = L.tileLayer(
   'https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
   { maxZoom: 19, opacity: 1, pane: 'overlayPane' }
 );
-let labelsVisible = false;
-
-function toggleLabels() {
-  labelsVisible = !labelsVisible;
-  if (labelsVisible) {
-    esriLabels.addTo(map);
-  } else {
-    map.removeLayer(esriLabels);
-  }
-  document.getElementById('btnLabels').classList.toggle('active', labelsVisible);
-}
+esriLabels.addTo(map);
 
 function loadGoogleMapsAPI() {
   if (GOOGLE_API_KEY === 'INSERT_YOUR_KEY_HERE') {
@@ -833,11 +988,17 @@ function switchLayer(key) {
     showToast('Google Maps API key required — see GOOGLE_API_KEY in the source');
     return;
   }
+  if (key === 'cesium' && !tileLayers[key]) {
+    tileLayers.cesium = createCesiumLayer();
+  }
   if (tileLayers[activeLayerKey]) map.removeLayer(tileLayers[activeLayerKey]);
   tileLayers[key].addTo(map);
   activeLayerKey = key;
-  ['lyrEsri','lyrSat','lyrHybrid','lyrDark','lyrOSM'].forEach(id => document.getElementById(id).classList.remove('active'));
-  const btnMap = { esri:'lyrEsri', satellite:'lyrSat', hybrid:'lyrHybrid', dark:'lyrDark', osm:'lyrOSM' };
+  ['lyrEsri','lyrCesium','lyrSat','lyrHybrid','lyrDark','lyrOSM'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
+  const btnMap = { esri:'lyrEsri', cesium:'lyrCesium', satellite:'lyrSat', hybrid:'lyrHybrid', dark:'lyrDark', osm:'lyrOSM' };
   document.getElementById(btnMap[key]).classList.add('active');
   document.getElementById('layerSwitcher').style.display = 'none';
 }
@@ -849,44 +1010,65 @@ const drawnItems = new L.FeatureGroup().addTo(map);
 let drawHandler = null;
 let currentAOI = null;
 
-// ── LOCATIONS ────────────────────────────────────────────
-const locations = {
-  moscow: { latlng: [55.75, 37.62], zoom: 10, name: 'Moscow' },
-  dubai:  { latlng: [25.2,  55.27], zoom: 11, name: 'Dubai'  },
-  tokyo:  { latlng: [35.69,139.69], zoom: 10, name: 'Tokyo'  },
-  ny:     { latlng: [40.71,-74.01], zoom: 10, name: 'New York'},
-};
+// ── GEOCODING SEARCH (Nominatim) ─────────────────────────
+const searchInput = document.getElementById('searchInput');
+const suggBox     = document.getElementById('searchSuggestions');
+let _searchTimer  = null;
+let _lastResults  = [];
 
-function flyToLocation(key) {
-  const l = locations[key];
-  map.flyTo(l.latlng, l.zoom, { duration: 1.2 });
-  document.getElementById('searchInput').value = l.name;
-  setTimeout(runSearch, 1300);
+function formatSuggestion(item) {
+  const parts = item.display_name.split(', ');
+  // Show first 3 parts for brevity (e.g. "Dublin, Leinster, Ireland")
+  return parts.slice(0, 3).join(', ');
 }
 
-// ── SEARCH SUGGESTIONS ───────────────────────────────────
-const SUGGESTIONS = ['Moscow, Russia','Saint Petersburg, Russia','Dubai, UAE',
-  'Tokyo, Japan','New York, USA','London, UK','Berlin, Germany',
-  'Beijing, China','Sydney, Australia','Cairo, Egypt'];
-
-const searchInput = document.getElementById('searchInput');
-const suggBox = document.getElementById('searchSuggestions');
+async function geocodeQuery(q) {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1`;
+  const res  = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+  return await res.json();
+}
 
 searchInput.addEventListener('input', () => {
-  const q = searchInput.value.toLowerCase().trim();
-  if (!q) { suggBox.classList.remove('open'); return; }
-  const hits = SUGGESTIONS.filter(s => s.toLowerCase().includes(q));
-  if (!hits.length) { suggBox.classList.remove('open'); return; }
-  suggBox.innerHTML = hits.map(h => `<div class="suggestion-item" onclick="selectSuggestion('${h}')">${h}</div>`).join('');
-  suggBox.classList.add('open');
+  const q = searchInput.value.trim();
+  if (q.length < 2) { suggBox.classList.remove('open'); _lastResults = []; return; }
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(async () => {
+    try {
+      const results = await geocodeQuery(q);
+      _lastResults = results;
+      if (!results.length) { suggBox.classList.remove('open'); return; }
+      suggBox.innerHTML = results.map((r, i) =>
+        `<div class="suggestion-item" onclick="selectGeoResult(${i})">${formatSuggestion(r)}</div>`
+      ).join('');
+      suggBox.classList.add('open');
+    } catch (e) { suggBox.classList.remove('open'); }
+  }, 300);
 });
-document.addEventListener('click', e => { if (!e.target.closest('.search-bar')) suggBox.classList.remove('open'); });
 
-function selectSuggestion(val) {
-  searchInput.value = val;
+searchInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (_lastResults.length) selectGeoResult(0);
+    else geocodeQuery(searchInput.value.trim()).then(r => { if (r.length) { _lastResults = r; selectGeoResult(0); }});
+  }
+  if (e.key === 'Escape') suggBox.classList.remove('open');
+});
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-bar')) suggBox.classList.remove('open');
+});
+
+function selectGeoResult(idx) {
+  const r = _lastResults[idx];
+  if (!r) return;
+  searchInput.value = formatSuggestion(r);
   suggBox.classList.remove('open');
-  const key = Object.keys(locations).find(k => val.toLowerCase().includes(locations[k].name.toLowerCase()));
-  if (key) flyToLocation(key); else runSearch();
+  const lat = parseFloat(r.lat);
+  const lon = parseFloat(r.lon);
+  // Determine zoom from result type
+  const typeZoom = { city: 11, town: 12, village: 13, suburb: 13, county: 10, state: 8, country: 6 };
+  const zoom = typeZoom[r.addresstype] || typeZoom[r.type] || 11;
+  map.flyTo([lat, lon], zoom, { duration: 1.2 });
+  setTimeout(runSearch, 1400);
 }
 
 // ── DATA TYPE ─────────────────────────────────────────────
@@ -896,27 +1078,36 @@ function selectDataType(type, el) {
   activeDataType = type;
   document.querySelectorAll('.datatype-card').forEach(c => c.classList.remove('active'));
   el.classList.add('active');
-
-  // Auto-sync the Sensor Type dropdown
-  const sensorSelect = document.getElementById('sensorType');
-  if (type === 'sar') {
-    sensorSelect.value = 'sar';
-  } else if (type === 'optical_satellite' || type === 'optical_aerial' || type === 'basemap') {
-    sensorSelect.value = 'optical';
-  } else {
-    sensorSelect.value = 'all';
-  }
-
   runSearch();
 }
 
-// ── TABS ──────────────────────────────────────────────────
-function switchTab(t) {
-  document.getElementById('tabArchive').classList.toggle('active', t === 'archive');
-  document.getElementById('tabOrder').classList.toggle('active', t === 'order');
-  showToast(t === 'order'
-    ? 'New Order mode: select area and capture date'
-    : 'Archive mode: search existing imagery');
+// ── ARCHIVE / TASKING MODE ─────────────────────────────────
+let activeMode = 'archive';
+
+function setMode(mode) {
+  activeMode = mode;
+  const archBtn = document.getElementById('modeArchive');
+  const taskBtn = document.getElementById('modeTasking');
+  if (mode === 'archive') {
+    archBtn.style.background = 'rgba(255,255,255,.10)'; archBtn.style.color = '#fff';
+    taskBtn.style.background = 'none'; taskBtn.style.color = 'var(--text-muted)';
+    showToast('Archive mode — searching existing imagery');
+  } else {
+    taskBtn.style.background = 'rgba(255,255,255,.10)'; taskBtn.style.color = '#fff';
+    archBtn.style.background = 'none'; archBtn.style.color = 'var(--text-muted)';
+    showToast('Tasking mode — request future satellite capture');
+  }
+  runSearch();
+}
+
+// ── BENTLEY INTEGRATIONS ───────────────────────────────────
+function openInITwin() {
+  if (!currentDetail) return;
+  showToast('Opening in Bentley iTwin… (integration pending API key)');
+}
+function openInCesium() {
+  if (!currentDetail) return;
+  showToast('Opening in Cesium Ion… (integration pending API key)');
 }
 
 // ── DRAW ──────────────────────────────────────────────────
@@ -1248,11 +1439,12 @@ function getThumb(dataType, idx) {
 
 // ── LABELS ────────────────────────────────────────────────
 const DATATYPE_LABEL = {
-  'optical_satellite': 'Optical Satellite',
-  'optical_aerial':    'Optical Aerial',
+  'optical_satellite': 'Optical',
+  'optical_aerial':    'Aerial',
   'elevation':         'Elevation',
-  'sar':               'SAR Satellite',
+  'sar':               'SAR',
   'basemap':           'Basemap',
+  'hyperspectral':     'Hyperspectral',
 };
 
 const rndI = (a,b) => Math.floor(a + Math.random()*(b-a+1));
@@ -1279,171 +1471,82 @@ const rndI = (a,b) => Math.floor(a + Math.random()*(b-a+1));
 const REAL_LISTINGS = [
   {
     id: 'IMG-001',
-    provider: 'Vantor',
-    product: 'Vantor-15cm',
-    type: 'optical',
-    dataType: 'optical_satellite',
-    dateStr: '2026-02-21',
-    resCm: 15,
-    bandCount: 4,
-    cloud: 23,
-    nadir: 12,
-    area: 25.17,
-    price: 18.00,
-    // Дублин — центр города
-    bounds: [[53.327, -6.285], [53.355, -6.235]],
-    thumb: null,
+    provider: 'Vantor', product: 'Vantor-15cm',
+    type: 'optical', dataType: 'optical_satellite', source: 'satellite',
+    dateStr: '2026-02-21', resCm: 15, bandCount: 4,
+    cloud: 23, nadir: 12, coverage: 92, area: 25.17, price: 18.00,
+    bounds: [[53.327, -6.285], [53.355, -6.235]], thumb: null,
   },
   {
     id: 'IMG-002',
-    provider: 'Vantor',
-    product: 'Vantor-50cm',
-    type: 'optical',
-    dataType: 'optical_satellite',
-    dateStr: '2026-02-21',
-    resCm: 50,
-    bandCount: 4,
-    cloud: 23,
-    nadir: 8,
-    area: 25.17,
-    price: 12.00,
-    // Дублинский порт / Ringsend
-    bounds: [[53.335, -6.230], [53.360, -6.185]],
-    thumb: null,
+    provider: 'Vantor', product: 'Vantor-50cm',
+    type: 'optical', dataType: 'optical_satellite', source: 'satellite',
+    dateStr: '2026-02-21', resCm: 50, bandCount: 4,
+    cloud: 23, nadir: 8, coverage: 95, area: 25.17, price: 12.00,
+    bounds: [[53.335, -6.230], [53.360, -6.185]], thumb: null,
   },
   {
     id: 'IMG-003',
-    provider: 'Vantor',
-    product: 'Vantor-50cm',
-    type: 'optical',
-    dataType: 'optical_satellite',
-    dateStr: '2026-02-21',
-    resCm: 50,
-    bandCount: 8,
-    cloud: 23,
-    nadir: 8,
-    area: 25.17,
-    price: 15.00,
-    // Дан Лэри (Dún Laoghaire) — южное побережье
-    bounds: [[53.285, -6.165], [53.310, -6.115]],
-    thumb: null,
+    provider: 'Vantor', product: 'Vantor-50cm 8-Band',
+    type: 'optical', dataType: 'optical_satellite', source: 'satellite',
+    dateStr: '2026-02-21', resCm: 50, bandCount: 8,
+    cloud: 23, nadir: 8, coverage: 95, area: 25.17, price: 15.00,
+    bounds: [[53.285, -6.165], [53.310, -6.115]], thumb: null,
   },
   {
     id: 'IMG-004',
-    provider: 'Vantor',
-    product: 'Vantor-30cm',
-    type: 'optical',
-    dataType: 'optical_satellite',
-    dateStr: '2026-02-21',
-    resCm: 30,
-    bandCount: 4,
-    cloud: 23,
-    nadir: 15,
-    area: 25.17,
-    price: 16.00,
-    // Финикс Парк (Phoenix Park) — запад
-    bounds: [[53.355, -6.360], [53.382, -6.305]],
-    thumb: null,
+    provider: 'Vantor', product: 'Vantor-30cm',
+    type: 'optical', dataType: 'optical_satellite', source: 'satellite',
+    dateStr: '2026-02-21', resCm: 30, bandCount: 4,
+    cloud: 23, nadir: 15, coverage: 88, area: 25.17, price: 16.00,
+    bounds: [[53.355, -6.360], [53.382, -6.305]], thumb: null,
   },
   {
     id: 'IMG-005',
-    provider: 'Maxar',
-    product: 'WorldView-3 Standard',
-    type: 'optical',
-    dataType: 'optical_satellite',
-    dateStr: '2026-01-14',
-    resCm: 31,
-    bandCount: 8,
-    cloud: 5,
-    nadir: 10,
-    area: 112.40,
-    price: 22.50,
-    // Север — Swords / аэропорт
-    bounds: [[53.415, -6.270], [53.470, -6.170]],
-    thumb: null,
+    provider: 'Maxar', product: 'WorldView-3 Standard',
+    type: 'optical', dataType: 'optical_satellite', source: 'satellite',
+    dateStr: '2026-01-14', resCm: 31, bandCount: 8,
+    cloud: 5, nadir: 10, coverage: 99, area: 112.40, price: 22.50,
+    bounds: [[53.415, -6.270], [53.470, -6.170]], thumb: null,
   },
   {
     id: 'IMG-006',
-    provider: 'Airbus',
-    product: 'Pléiades Neo 4-Band',
-    type: 'optical',
-    dataType: 'optical_satellite',
-    dateStr: '2025-12-03',
-    resCm: 30,
-    bandCount: 4,
-    cloud: 11,
-    nadir: 7,
-    area: 68.90,
-    price: 19.00,
-    // Толлаймор / Бре (Bray) — юг
-    bounds: [[53.195, -6.115], [53.250, -6.040]],
-    thumb: null,
+    provider: 'Airbus', product: 'Pléiades Neo 4-Band',
+    type: 'optical', dataType: 'optical_satellite', source: 'satellite',
+    dateStr: '2025-12-03', resCm: 30, bandCount: 4,
+    cloud: 11, nadir: 7, coverage: 97, area: 68.90, price: 19.00,
+    bounds: [[53.195, -6.115], [53.250, -6.040]], thumb: null,
   },
   {
     id: 'IMG-007',
-    provider: 'ICEYE',
-    product: 'ICEYE SAR Stripmap',
-    type: 'sar',
-    dataType: 'sar',
-    dateStr: '2026-02-10',
-    resCm: 100,
-    bandCount: 2,
-    cloud: 0,
-    nadir: 30,
-    area: 42.00,
-    price: 30.00,
-    // Северный Дублин — Drumcondra / Clontarf
-    bounds: [[53.358, -6.268], [53.385, -6.205]],
-    thumb: null,
+    provider: 'ICEYE', product: 'ICEYE SAR Stripmap',
+    type: 'sar', dataType: 'sar', source: 'satellite',
+    dateStr: '2026-02-10', resCm: 100, bandCount: 2,
+    cloud: 0, nadir: 30, coverage: 100, area: 42.00, price: 30.00,
+    bounds: [[53.358, -6.268], [53.385, -6.205]], thumb: null,
   },
   {
     id: 'IMG-008',
-    provider: 'Planet Labs',
-    product: 'SkySat Collect',
-    type: 'optical',
-    dataType: 'optical_satellite',
-    dateStr: '2026-01-28',
-    resCm: 50,
-    bandCount: 4,
-    cloud: 18,
-    nadir: 22,
-    area: 42.80,
-    price: 10.00,
-    // Талахт (Tallaght) — юго-запад
-    bounds: [[53.285, -6.400], [53.325, -6.340]],
-    thumb: null,
+    provider: 'Planet Labs', product: 'SkySat Collect',
+    type: 'optical', dataType: 'optical_satellite', source: 'satellite',
+    dateStr: '2026-01-28', resCm: 50, bandCount: 4,
+    cloud: 18, nadir: 22, coverage: 82, area: 42.80, price: 10.00,
+    bounds: [[53.285, -6.400], [53.325, -6.340]], thumb: null,
   },
   {
     id: 'IMG-009',
-    provider: 'Airbus',
-    product: 'SPOT-7 Mosaic',
-    type: 'optical',
-    dataType: 'optical_aerial',
-    dateStr: '2025-11-19',
-    resCm: 150,
-    bandCount: 4,
-    cloud: 8,
-    nadir: 5,
-    area: 55.00,
-    price: 6.00,
-    // Sandyford / Leopardstown — юго-запад
-    bounds: [[53.262, -6.245], [53.295, -6.180]],
-    thumb: null,
+    provider: 'Vexcel Imaging', product: 'UltraCam Aerial',
+    type: 'optical', dataType: 'optical_aerial', source: 'aerial',
+    dateStr: '2025-11-19', resCm: 10, bandCount: 4,
+    cloud: 0, nadir: 3, coverage: 100, area: 55.00, price: 6.00,
+    bounds: [[53.262, -6.245], [53.295, -6.180]], thumb: null,
   },
   {
     id: 'IMG-010',
-    provider: 'Vantor',
-    product: 'Vantor-15cm 8-Band',
-    type: 'optical',
-    dataType: 'optical_satellite',
-    dateStr: '2026-02-05',
-    resCm: 15,
-    bandCount: 8,
-    cloud: 2,
-    nadir: 9,
-    area: 18.60,
-    price: 25.00,
-    // Хоут (Howth) — северный мыс
+    provider: 'Vantor', product: 'Vantor-15cm 8-Band',
+    type: 'optical', dataType: 'optical_satellite', source: 'satellite',
+    dateStr: '2026-02-05', resCm: 15, bandCount: 8,
+    cloud: 2, nadir: 9, coverage: 98, area: 18.60, price: 25.00,
     bounds: [[53.370, -6.090], [53.395, -6.040]],
     thumb: null,
   },
@@ -1456,21 +1559,23 @@ let footprintLayers = [];
 
 // ── FILTER REAL LISTINGS ───────────────────────────────────
 function generateResults() {
-  const dateFrom   = document.getElementById('dateFrom').value   || '2000-01-01';
-  const dateTo     = document.getElementById('dateTo').value     || '2099-12-31';
-  const sensor     = document.getElementById('sensorType').value;
-  const resFilter  = document.getElementById('resolution').value;
-  const maxCloud   = parseInt(document.getElementById('cloudCover').value);
-  const provFilter = document.getElementById('provider').value;
+  const dateFrom    = document.getElementById('dateFrom').value    || '2000-01-01';
+  const dateTo      = document.getElementById('dateTo').value      || '2099-12-31';
+  const resFilter   = document.getElementById('resolution').value;
+  const maxCloud    = parseInt(document.getElementById('cloudCover').value);
+  const minCoverage = parseInt(document.getElementById('coverage').value);
+  const provFilter  = document.getElementById('provider').value;
+
 
   let aoiBounds = null;
   if (currentAOI) aoiBounds = currentAOI.getBounds();
 
   return REAL_LISTINGS.filter(item => {
+    // Archive vs Tasking: tasking shows only future dates, archive shows past
+    if (activeMode === 'tasking' && item.dateStr <= new Date().toISOString().slice(0,10)) return false;
+    if (activeMode === 'archive' && item.dateStr > new Date().toISOString().slice(0,10)) return false;
     // Date range
     if (item.dateStr < dateFrom || item.dateStr > dateTo) return false;
-    // Sensor type
-    if (sensor !== 'all' && item.type !== sensor) return false;
     // Data type card
     if (activeDataType !== 'all' && item.dataType !== activeDataType) return false;
     // Resolution (resCm → convert to metres for filter)
@@ -1480,6 +1585,9 @@ function generateResults() {
     if (resFilter === 'low'    && resM <= 3)              return false;
     // Cloud cover
     if (item.type === 'optical' && item.cloud > maxCloud) return false;
+    // Coverage
+    const itemCoverage = item.coverage ?? 100;
+    if (itemCoverage < minCoverage) return false;
     // Provider
     if (provFilter !== 'all' && !item.provider.toLowerCase().startsWith(provFilter)) return false;
     // Spatial overlap
@@ -1597,7 +1705,7 @@ function renderResults() {
 function sortResults() {
   const by = document.getElementById('sortSelect').value;
   if (by==='date')  allResults.sort((a,b)=>new Date(b.dateStr)-new Date(a.dateStr));
-  if (by==='price') allResults.sort((a,b)=>a.price-b.price);
+
   if (by==='cloud') allResults.sort((a,b)=>a.cloud-b.cloud);
   if (by==='res')   allResults.sort((a,b)=>a.resCm-b.resCm);
   renderResults();
@@ -1641,8 +1749,10 @@ function renderFootprints() {
         <div style="color:#aaa;">Area: <span style="color:#fff">${item.area} km²</span></div>
       </div>
     `, {
-      sticky: true,
+      sticky: false,
       opacity: 1,
+      direction: 'right',
+      offset: [16, 0],
       className: 'footprint-tooltip',
     });
 
@@ -1686,10 +1796,10 @@ function selectItem(id) {
     <div class="detail-row"><span class="key">Resolution</span><span class="val">${item.resCm} cm</span></div>
     <div class="detail-row"><span class="key">Bands</span><span class="val">${item.bandCount} Band</span></div>
     <div class="detail-row"><span class="key">Cloud Cover</span><span class="val">${item.type==='sar'?'N/A':item.cloud+'%'}</span></div>
+    <div class="detail-row"><span class="key">Source</span><span class="val" style="text-transform:capitalize;">${item.source || 'Satellite'}</span></div>
+    <div class="detail-row"><span class="key">Coverage</span><span class="val">${item.coverage ?? 100}%</span></div>
     <div class="detail-row"><span class="key">Off-Nadir Angle</span><span class="val">${item.nadir}°</span></div>
     <div class="detail-row"><span class="key">Order Area</span><span class="val">${item.area} km²</span></div>
-    <div class="detail-row"><span class="key">Price / km²</span><span class="val">$${Number(item.price).toFixed(2)}</span></div>
-    <div class="detail-row"><span class="key">Est. Total</span><span class="val">$${(item.price * item.area).toFixed(2)}</span></div>
   `;
 
   document.getElementById('detailPanel').classList.add('open');
@@ -1711,7 +1821,7 @@ function openEnquire(item) {
     info.innerHTML = [
       item.product, item.provider, fmtDate(item.dateStr),
       item.resCm+'cm', item.bandCount+' Band',
-      item.area+' km²', '$'+Number(item.price).toFixed(2)+'/km²'
+      item.area+' km²'
     ].map(v=>`<span class="modal-tag">${v}</span>`).join('');
   } else {
     ctx.style.display = 'none';
@@ -1760,6 +1870,58 @@ setTimeout(()=>{
   map.setView([53.35, -6.30], 10);
   runSearch();
 }, 300);
+</script>
+
+<!-- MOBILE FAB -->
+<button class="mobile-search-fab" id="mobileFab" onclick="onFabClick()">Search Imagery</button>
+
+<script>
+// ── MOBILE BOTTOM SHEET ──────────────────────────────────
+let sheetOpen = false;
+let activeSheetTab = 'filters';
+
+function toggleSheet(forceState) {
+  const panel = document.getElementById('leftPanel');
+  const fab   = document.getElementById('mobileFab');
+  sheetOpen = forceState !== undefined ? forceState : !sheetOpen;
+  panel.classList.toggle('sheet-open', sheetOpen);
+  if (fab) fab.classList.toggle('hidden', sheetOpen);
+}
+
+function switchSheetTab(tab) {
+  activeSheetTab = tab;
+  const isMobile = window.innerWidth < 768;
+  document.getElementById('sheetFiltersContent').style.display = isMobile && tab !== 'filters' ? 'none' : '';
+  document.getElementById('sheetResultsContent').style.display = isMobile && tab !== 'results'  ? 'none' : '';
+  document.getElementById('tabFilters').classList.toggle('active', tab === 'filters');
+  document.getElementById('tabResults').classList.toggle('active', tab === 'results');
+  if (isMobile && !sheetOpen) toggleSheet(true);
+}
+
+function onFabClick() {
+  toggleSheet(true);
+}
+
+// After search on mobile → switch to Results tab
+const _origRenderResults = window.renderResults;
+if (typeof renderResults === 'function') {
+  const __orig = renderResults;
+  window.renderResults = function() {
+    __orig.apply(this, arguments);
+    if (window.innerWidth < 768) switchSheetTab('results');
+  };
+}
+
+// Touch swipe down to close
+(function() {
+  const panel = document.getElementById('leftPanel');
+  let startY = 0;
+  panel.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true });
+  panel.addEventListener('touchend', e => {
+    const dy = e.changedTouches[0].clientY - startY;
+    if (dy > 60 && sheetOpen) toggleSheet(false);
+  }, { passive: true });
+})();
 </script>
 </body>
 </html>
